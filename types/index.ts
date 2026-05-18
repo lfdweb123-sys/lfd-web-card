@@ -1,37 +1,35 @@
-// types/index.ts
-
 export type UserRole = 'user' | 'admin';
+export type CardStatus = 'pending' | 'active' | 'frozen' | 'terminated';
+export type TransactionType = 'card_purchase' | 'card_reload' | 'refund';
+export type TransactionStatus = 'pending' | 'success' | 'failed' | 'error';
+export type CardBrand = 'mastercard' | 'visa';
 
-export interface User {
+export interface AppUser {
   uid: string;
   email: string;
   displayName: string;
   role: UserRole;
   phone?: string;
   country: string;
-  createdAt: string;
   status: 'active' | 'suspended';
+  createdAt: string;
 }
-
-export type CardStatus = 'pending' | 'active' | 'frozen' | 'terminated';
 
 export interface VirtualCard {
   id: string;
   userId: string;
   pagocardsCardId: string;
   last4: string;
-  brand: 'visa' | 'mastercard';
+  brand: CardBrand;
   expiryMonth: string;
   expiryYear: string;
   cardholderName: string;
+  email: string;
   currency: string;
   balance: number;
   status: CardStatus;
   createdAt: string;
 }
-
-export type TransactionType = 'card_purchase' | 'card_reload' | 'refund';
-export type TransactionStatus = 'pending' | 'success' | 'failed';
 
 export interface Transaction {
   id: string;
@@ -42,20 +40,20 @@ export interface Transaction {
   currency: string;
   status: TransactionStatus;
   pid?: string;
-  pagocardsRef?: string;
-  metadata?: Record<string, string>;
   createdAt: string;
   completedAt?: string;
 }
 
-export interface ApiResponse<T = null> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export interface PaymentLinkResponse {
-  url: string;
-  pid: string;
-  transactionId: string;
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'wallet_activation' | '3ds_required' | 'card_created' | 'card_reloaded';
+  title: string;
+  message: string;
+  read: boolean;
+  requiresAction?: boolean;
+  eventId?: string;
+  eventTargetId?: string;
+  cardId?: string;
+  createdAt: string;
 }

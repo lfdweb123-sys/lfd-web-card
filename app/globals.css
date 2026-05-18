@@ -1,98 +1,66 @@
-/* app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @layer base {
-  * { box-sizing: border-box; }
-  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #E8ECF0; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #C8D0D8; }
-
+  body { font-family: 'DM Sans', sans-serif; background: #F7F9FC; color: #0A0A0A; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: #E8ECF0; border-radius: 4px; }
   ::selection { background: #FF7A00; color: white; }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-orange hover:bg-brand-orange-dark text-white font-medium px-6 py-3 rounded-2xl transition-all duration-200 shadow-orange hover:shadow-orange hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply inline-flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold px-6 py-3 rounded-2xl transition-all duration-200 shadow-orange hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
   }
-  
   .btn-secondary {
-    @apply bg-surface-muted hover:bg-surface-border text-text-primary font-medium px-6 py-3 rounded-2xl transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 bg-surface-muted hover:bg-surface-border text-ink-primary font-semibold px-6 py-3 rounded-2xl transition-all duration-200;
   }
-  
   .btn-ghost {
-    @apply text-text-secondary hover:text-text-primary hover:bg-surface-muted px-4 py-2 rounded-xl transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 text-ink-secondary hover:text-ink-primary hover:bg-surface-muted px-4 py-2 rounded-xl transition-all duration-200;
   }
-
-  .card {
-    @apply bg-surface-card rounded-3xl shadow-card border border-surface-border;
-  }
-
+  .card { @apply bg-white rounded-3xl shadow-card border border-surface-border; }
   .input-field {
-    @apply w-full bg-surface-muted border border-surface-border rounded-2xl px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all duration-200;
+    @apply w-full bg-surface-muted border border-surface-border rounded-2xl px-4 py-3 text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all duration-200 font-sans;
   }
-
-  .badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
-  }
-
-  .badge-green { @apply badge bg-brand-green-light text-brand-green-dark; }
+  .badge { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold; }
+  .badge-green { @apply badge bg-brand-green-light text-green-700; }
   .badge-orange { @apply badge bg-brand-orange-light text-brand-orange-dark; }
   .badge-red { @apply badge bg-red-50 text-red-600; }
-  .badge-gray { @apply badge bg-surface-muted text-text-secondary; }
+  .badge-gray { @apply badge bg-surface-muted text-ink-secondary; }
+  .badge-blue { @apply badge bg-blue-50 text-blue-600; }
 
-  .virtual-card {
-    @apply relative rounded-3xl p-6 text-white overflow-hidden select-none;
-    background: linear-gradient(135deg, #0A0A0A 0%, #1a1a2e 50%, #16213e 100%);
-    min-height: 200px;
+  /* Sidebar layout */
+  .sidebar-fixed {
+    @apply fixed top-0 left-0 h-screen w-64 bg-white border-r border-surface-border flex flex-col z-40;
+  }
+  .main-with-sidebar {
+    @apply ml-0 md:ml-64 min-h-screen;
   }
 
-  .virtual-card-orange {
+  /* Virtual card */
+  .vcard {
     @apply relative rounded-3xl p-6 text-white overflow-hidden select-none;
-    background: linear-gradient(135deg, #FF7A00 0%, #FF4500 50%, #CC3700 100%);
-    min-height: 200px;
+    background: linear-gradient(135deg, #111827 0%, #1e3a5f 60%, #0f2744 100%);
+    min-height: 196px;
   }
-
-  .virtual-card-frozen {
+  .vcard-frozen {
     @apply relative rounded-3xl p-6 text-white overflow-hidden select-none;
-    background: linear-gradient(135deg, #4a5568 0%, #2d3748 50%, #1a202c 100%);
-    min-height: 200px;
-    filter: grayscale(0.3);
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    min-height: 196px;
+    filter: grayscale(0.4);
   }
 }
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(135deg, #FF7A00, #FF4500);
+    background: linear-gradient(135deg, #FF7A00, #E06A00);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-  }
-
-  .shimmer-bg {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  .card-shine {
-    position: relative;
-    overflow: hidden;
-  }
-  .card-shine::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -60%;
-    width: 30%;
-    height: 200%;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
-    transform: skewX(-20deg);
-    pointer-events: none;
   }
 }

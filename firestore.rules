@@ -1,79 +1,34 @@
-// firestore.rules
-// ================================================================
-// FIRESTORE SECURITY RULES
-// Déployer avec : firebase deploy --only firestore:rules
-//
-// Principe : tout accès direct depuis le client est refusé.
-// Toutes les écritures/lectures sensibles passent par les API Routes
-// Next.js qui utilisent firebase-admin (contourne ces règles).
-// ================================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Fonctions utilitaires
-    function isAuth() {
-      return request.auth != null;
-    }
+    function isAuth() { return request.auth != null; }
+    function isOwner(uid) { return isAuth() && request.auth.uid == uid; }
+    function isAdmin() { return isAuth() && request.auth.token.role == 'admin'; }
 
-    function isOwner(uid) {
-      return isAuth() && request.auth.uid == uid;
-    }
-
-    function isAdmin() {
-      return isAuth() && request.auth.token.role == 'admin';
-    }
-
-    // ── users ────────────────────────────────────────────────────
-    // L'utilisateur peut lire son propre profil
-    // Écriture uniquement via Admin SDK (API Routes)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if false; // ← Admin SDK uniquement
+      allow write: if false;
     }
-
-    // ── cards ────────────────────────────────────────────────────
-    // L'utilisateur peut lire ses propres cartes
-    // Création/modification uniquement via webhook (Admin SDK)
     match /cards/{cardId} {
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
-      allow write: if false; // ← Admin SDK uniquement
+      allow read: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
     }
-
-    // ── transactions ─────────────────────────────────────────────
     match /transactions/{txId} {
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
-      allow write: if false; // ← Admin SDK uniquement
+      allow read: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
     }
-
-    // ── notifications ────────────────────────────────────────────
-    // L'utilisateur peut lire ses notifications
-    // Seule mise à jour autorisée : marquer comme lu
     match /notifications/{notifId} {
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
-      // Marquer comme lu uniquement (champ "read" → true)
-      allow update: if isAuth()
-        && resource.data.userId == request.auth.uid
+      allow read: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuth() && resource.data.userId == request.auth.uid
         && request.resource.data.read == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
     }
-
-    // ── logs ─────────────────────────────────────────────────────
-    // Lecture admin uniquement
     match /logs/{logId} {
       allow read: if isAdmin();
       allow write: if false;
     }
-
-    // Tout le reste : refusé
     match /{document=**} {
       allow read, write: if false;
     }

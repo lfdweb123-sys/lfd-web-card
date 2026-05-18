@@ -1,60 +1,25 @@
-// lib/payment-gateway.ts
-// ================================================================
-// LFD PAYMENT GATEWAY CLIENT
-// https://paymentgateway.lfdweb.com
-// Tous les appels sont SERVEUR UNIQUEMENT
-// ================================================================
+const GW = process.env.GATEWAY_BASE_URL || 'https://paymentgateway.lfdweb.com';
+const KEY = () => process.env.GATEWAY_API_KEY!;
 
-const GATEWAY_BASE_URL = process.env.GATEWAY_BASE_URL || 'https://paymentgateway.lfdweb.com';
-const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY!;
-
-// ----------------------------------------------------------------
-// Générer un lien de paiement
-// ----------------------------------------------------------------
-export async function generatePaymentLink(data: {
-  amount: number;
-  description: string;
-  transactionId: string;
-  userId: string;
-  country?: string;
-  method?: string;
+export async function generatePaymentLink(d: {
+  amount: number; description: string; transactionId: string;
+  userId: string; country?: string; method?: string;
 }) {
-  const response = await fetch(`${GATEWAY_BASE_URL}/api/gateway/generate-link`, {
+  const res = await fetch(`${GW}/api/gateway/generate-link`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': GATEWAY_API_KEY,
-    },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': KEY() },
     body: JSON.stringify({
-      amount: data.amount,
-      description: data.description,
-      country: data.country || 'bj',
-      method: data.method || 'mtn_money',
-      metadata: {
-        transactionId: data.transactionId, // ✅ Clé fiable pour le webhook
-        userId: data.userId,
-      },
+      amount: d.amount, description: d.description,
+      country: d.country || 'bj', method: d.method || 'mtn_money',
+      metadata: { transactionId: d.transactionId, userId: d.userId },
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Gateway error: ${response.status}`);
-  }
-
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error || 'Payment link generation failed');
-
-  return { url: result.url as string, pid: result.pid as string };
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Payment link failed');
+  return { url: data.url as string, pid: data.pid as string };
 }
 
-// ----------------------------------------------------------------
-// Vérifier le statut d'un paiement
-// ----------------------------------------------------------------
-export async function verifyPayment(transactionId: string) {
-  const response = await fetch(
-    `${GATEWAY_BASE_URL}/api/gateway/verify/${transactionId}`,
-    { headers: { 'x-api-key': GATEWAY_API_KEY } }
-  );
-  if (!response.ok) throw new Error('Verification failed');
-  return response.json();
+export async function verifyPayment(id: string) {
+  const res = await fetch(`${GW}/api/gateway/verify/${id}`, { headers: { 'x-api-key': KEY() } });
+  return res.json();
 }

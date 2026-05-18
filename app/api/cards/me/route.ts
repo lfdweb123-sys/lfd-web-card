@@ -1,4 +1,3 @@
-// app/api/cards/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
@@ -12,17 +11,19 @@ export async function GET(req: NextRequest) {
       adminDb.collection('transactions')
         .where('userId', '==', user.uid)
         .orderBy('createdAt', 'desc')
-        .limit(20)
-        .get(),
+        .limit(30).get(),
     ]);
 
-    const cards = cardsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const transactions = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    return NextResponse.json({ success: true, data: { cards, transactions } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        cards: cardsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        transactions: txSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      },
+    });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erreur interne';
-    if (message === 'UNAUTHORIZED') return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Erreur';
+    if (msg === 'UNAUTHORIZED') return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
