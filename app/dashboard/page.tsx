@@ -8,7 +8,7 @@ import {
   CreditCard, LogOut, Plus, RefreshCw, Eye, EyeOff,
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
   Clock, CheckCircle, XCircle, Copy, Check,
-  TrendingUp, Bell, Home, X, ChevronRight, AlertCircle
+  TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu
 } from 'lucide-react';
 
 const METHODS: Record<string, string[]> = {
@@ -32,7 +32,7 @@ function Logo() {
   );
 }
 
-// ── Sidebar ──────────────────────────────────────────────────────
+// ── Sidebar desktop ───────────────────────────────────────────────
 function Sidebar({ active, onNav, onLogout, userName, unread }: {
   active: string; onNav: (s: string) => void; onLogout: () => void;
   userName: string; unread: number;
@@ -44,7 +44,7 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
   ];
   return (
-    <aside className="sidebar-fixed">
+    <aside className="sidebar-fixed hidden md:flex flex-col">
       <div className="px-5 py-5 border-b border-surface-border">
         <Logo />
       </div>
@@ -72,6 +72,74 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
         </button>
       </div>
     </aside>
+  );
+}
+
+// ── Mobile drawer ─────────────────────────────────────────────────
+function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread }: {
+  open: boolean; onClose: () => void; active: string; onNav: (s: string) => void;
+  onLogout: () => void; userName: string; unread: number;
+}) {
+  const items = [
+    { id: 'home', label: 'Accueil', icon: <Home size={18} /> },
+    { id: 'card', label: 'Ma carte', icon: <CreditCard size={18} /> },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
+  ];
+  if (!open) return null;
+  return (
+    <>
+      {/* Overlay */}
+      <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
+      {/* Drawer */}
+      <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
+        <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
+          <Logo />
+          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center">
+            <X size={15} />
+          </button>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {items.map(item => (
+            <button key={item.id} onClick={() => { onNav(item.id); onClose(); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+              {item.icon}
+              <span className="flex-1">{item.label}</span>
+              {item.badge ? <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
+            </button>
+          ))}
+        </nav>
+        <div className="px-5 py-4 border-t border-surface-border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
+              <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{userName}</div>
+            </div>
+          </div>
+          <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+            <LogOut size={16} /> Déconnexion
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Mobile top bar ────────────────────────────────────────────────
+function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-white border-b border-surface-border px-4 h-14 flex items-center justify-between">
+      <button onClick={onMenu} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
+        <Menu size={18} />
+      </button>
+      <Logo />
+      <div className="w-9 h-9 flex items-center justify-center relative">
+        <Bell size={18} className="text-ink-secondary" />
+        {unread > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unread}</span>}
+      </div>
+    </div>
   );
 }
 
@@ -151,24 +219,27 @@ function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze:
   );
 }
 
-// ── Buy Modal ────────────────────────────────────────────────────
+// ── Buy Modal ─────────────────────────────────────────────────────
+// Choix Visa / Mastercard — pas de mode de paiement (géré par la passerelle)
 function BuyModal({ onClose, country, getToken }: { onClose: () => void; country: string; getToken: () => Promise<string> }) {
-  const [method, setMethod] = useState('mtn_money');
+  const [brand, setBrand] = useState<'visa' | 'mastercard'>('visa');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const methods = METHODS[country] || METHODS.DEFAULT;
 
   const handle = async () => {
     setLoading(true); setError('');
     try {
       const token = await getToken();
       const res = await fetch('/api/cards/buy', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ country: country.toLowerCase(), method }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ country: country.toLowerCase(), brand }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
-      window.location.href = data.data.url;
+      // Ouvrir dans un nouvel onglet
+      window.open(data.data.url, '_blank');
+      onClose();
     } catch { setError('Erreur réseau.'); setLoading(false); }
   };
 
@@ -176,34 +247,55 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
         <div className="flex justify-between items-start mb-5">
-          <div><h3 className="font-bold text-xl">Acheter une carte</h3><p className="text-ink-secondary text-sm">Paiement unique de 5 000 FCFA</p></div>
+          <div>
+            <h3 className="font-bold text-xl">Acheter une carte</h3>
+            <p className="text-ink-secondary text-sm">Paiement unique de 5 000 FCFA</p>
+          </div>
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
+
+        {/* Choix du réseau */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium mb-2">Type de carte</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setBrand('visa')}
+              className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${brand === 'visa' ? 'border-brand-orange bg-brand-orange-light' : 'border-surface-border bg-surface-muted'}`}>
+              <span className={`text-lg font-extrabold italic tracking-tight ${brand === 'visa' ? 'text-brand-orange' : 'text-ink-secondary'}`}>VISA</span>
+              <span className={`text-xs font-medium ${brand === 'visa' ? 'text-brand-orange' : 'text-ink-muted'}`}>Visa Virtuelle</span>
+            </button>
+            <button onClick={() => setBrand('mastercard')}
+              className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${brand === 'mastercard' ? 'border-brand-orange bg-brand-orange-light' : 'border-surface-border bg-surface-muted'}`}>
+              {/* Mastercard logo simplifié */}
+              <div className="flex items-center -space-x-2">
+                <div className={`w-7 h-7 rounded-full ${brand === 'mastercard' ? 'bg-brand-orange' : 'bg-red-400'}`} />
+                <div className={`w-7 h-7 rounded-full opacity-80 ${brand === 'mastercard' ? 'bg-yellow-400' : 'bg-yellow-300'}`} />
+              </div>
+              <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Aperçu carte */}
         <div className="vcard mb-5 py-5 px-5 shadow-md" style={{ minHeight: 'auto' }}>
           <div className="text-white/40 text-[10px] tracking-widest mb-1">VOTRE NOUVELLE CARTE</div>
           <div className="font-mono text-white/70 tracking-[0.18em]">•••• •••• •••• ••••</div>
           <div className="flex justify-between mt-4 text-xs">
-            <span className="text-white/40">Carte Visa virtuelle</span>
-            <span className="font-bold tracking-widest">VISA</span>
+            <span className="text-white/40">Carte {brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle</span>
+            <span className="font-bold tracking-widest uppercase">{brand}</span>
           </div>
         </div>
+
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
-        <div className="mb-5">
-          <label className="block text-sm font-medium mb-2">Mode de paiement</label>
-          <div className="grid grid-cols-2 gap-2">
-            {methods.map(m => (
-              <button key={m} onClick={() => setMethod(m)} className={`p-3 rounded-2xl border text-sm font-medium transition-all text-left ${method === m ? 'border-brand-orange bg-brand-orange-light text-brand-orange' : 'border-surface-border bg-surface-muted text-ink-secondary'}`}>
-                {METHOD_LABELS[m]}
-              </button>
-            ))}
-          </div>
-        </div>
+
         <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Carte Visa virtuelle</span><span className="font-medium">5 000 FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Carte {brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle</span><span className="font-medium">5 000 FCFA</span></div>
           <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="text-brand-green font-medium">Offerts</span></div>
           <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">5 000 FCFA</span></div>
         </div>
-        <button onClick={handle} disabled={loading} className="btn-primary w-full py-3.5">{loading ? 'Redirection...' : 'Payer maintenant →'}</button>
+
+        <button onClick={handle} disabled={loading} className="btn-primary w-full py-3.5">
+          {loading ? 'Redirection...' : 'Payer maintenant →'}
+        </button>
         <p className="text-center text-xs text-ink-muted mt-2">Vous serez redirigé vers la page de paiement sécurisé</p>
       </div>
     </div>
@@ -213,10 +305,8 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
 // ── Reload Modal ─────────────────────────────────────────────────
 function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string> }) {
   const [amount, setAmount] = useState(5000);
-  const [method, setMethod] = useState('mtn_money');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const methods = METHODS[country] || METHODS.DEFAULT;
   const usd = (amount / 600).toFixed(2);
 
   const handle = async () => {
@@ -225,12 +315,15 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
     try {
       const token = await getToken();
       const res = await fetch('/api/cards/reload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cardId: card.id, amount, country: country.toLowerCase(), method }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cardId: card.id, amount, country: country.toLowerCase() }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
-      window.location.href = data.data.url;
+      // Ouvrir dans un nouvel onglet
+      window.open(data.data.url, '_blank');
+      onClose();
     } catch { setError('Erreur réseau.'); setLoading(false); }
   };
 
@@ -254,19 +347,15 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
             </button>
           ))}
         </div>
-        <div className="mb-5">
-          <label className="block text-sm font-medium mb-2">Mode de paiement</label>
-          <div className="grid grid-cols-2 gap-2">
-            {methods.map(m => (
-              <button key={m} onClick={() => setMethod(m)} className={`p-3 rounded-2xl border text-sm font-medium transition-all text-left ${method === m ? 'border-brand-orange bg-brand-orange-light text-brand-orange' : 'border-surface-border bg-surface-muted text-ink-secondary'}`}>
-                {METHOD_LABELS[m]}
-              </button>
-            ))}
-          </div>
+        <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Rechargement carte</span><span className="font-medium">{amount.toLocaleString()} FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="text-brand-green font-medium">Offerts</span></div>
+          <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{amount.toLocaleString()} FCFA</span></div>
         </div>
         <button onClick={handle} disabled={loading || amount < 1000} className="btn-primary w-full py-3.5">
           {loading ? 'Redirection...' : `Recharger ${amount.toLocaleString()} FCFA →`}
         </button>
+        <p className="text-center text-xs text-ink-muted mt-2">Vous serez redirigé vers la page de paiement sécurisé</p>
       </div>
     </div>
   );
@@ -309,6 +398,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState('home');
   const [showBuy, setShowBuy] = useState(false);
   const [showReload, setShowReload] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!firebaseUser) return;
@@ -388,7 +478,7 @@ export default function DashboardPage() {
                 <CreditCard size={24} className="text-brand-orange" />
               </div>
               <h3 className="font-bold text-lg mb-2">Pas encore de carte</h3>
-              <p className="text-ink-secondary text-sm mb-5">Obtenez votre carte Visa virtuelle internationale pour payer partout dans le monde.</p>
+              <p className="text-ink-secondary text-sm mb-5">Obtenez votre carte Visa ou Mastercard virtuelle internationale pour payer partout dans le monde.</p>
               <button onClick={() => setShowBuy(true)} className="btn-primary"><Plus size={16} />Acheter une carte — 5 000 FCFA</button>
             </div>
           )}
@@ -449,7 +539,7 @@ export default function DashboardPage() {
             <div className="card p-8 text-center border-2 border-dashed border-brand-orange/30">
               <CreditCard size={40} className="text-brand-orange mx-auto mb-4" />
               <h3 className="font-bold text-lg mb-2">Aucune carte active</h3>
-              <p className="text-ink-secondary text-sm mb-5">Achetez votre première carte virtuelle internationale.</p>
+              <p className="text-ink-secondary text-sm mb-5">Achetez votre première carte Visa ou Mastercard virtuelle internationale.</p>
               <button onClick={() => setShowBuy(true)} className="btn-primary"><Plus size={16} />Acheter — 5 000 FCFA</button>
             </div>
           )}
@@ -506,12 +596,26 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-surface-bg">
-      {/* Sidebar desktop */}
+      {/* Sidebar desktop (cachée sur mobile) */}
       <Sidebar active={tab} onNav={setTab} onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} unread={unread} />
+
+      {/* Top bar mobile avec bouton hamburger */}
+      <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unread} />
+
+      {/* Drawer mobile */}
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        active={tab}
+        onNav={setTab}
+        onLogout={logout}
+        userName={appUser?.displayName || 'Utilisateur'}
+        unread={unread}
+      />
 
       {/* Main content */}
       <div className="main-with-sidebar">
-        <main className="p-5 sm:p-8 pb-24 md:pb-8 max-w-3xl">
+        <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8 max-w-7xl">
           {renderContent()}
         </main>
       </div>

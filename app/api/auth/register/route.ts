@@ -23,10 +23,14 @@ export async function POST(req: NextRequest) {
       status: 'active', createdAt: new Date().toISOString(),
     });
     return NextResponse.json({ success: true, data: { uid: userRecord.uid } });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Erreur';
+} catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+    const code = (err as any)?.code || '';
+    console.error('REGISTER ERROR:', { msg, code, err });
+    
     if (msg.includes('email-already-exists') || msg.includes('EMAIL_EXISTS'))
       return NextResponse.json({ success: false, error: 'Email déjà utilisé.' }, { status: 400 });
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    
+    return NextResponse.json({ success: false, error: msg, code }, { status: 500 });
   }
 }
