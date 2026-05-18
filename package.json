@@ -9,9 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "15.1.0",
-    "react": "^19",
-    "react-dom": "^19",
+    "next": "^15.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "firebase": "^10.12.2",
     "firebase-admin": "^12.2.0",
     "zod": "^3.23.8",
@@ -21,12 +21,12 @@
   "devDependencies": {
     "typescript": "^5",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "tailwindcss": "^3.4.1",
     "postcss": "^8",
     "autoprefixer": "^10",
     "eslint": "^9",
-    "eslint-config-next": "15.1.0"
+    "eslint-config-next": "^15.2.5"
   }
 }
