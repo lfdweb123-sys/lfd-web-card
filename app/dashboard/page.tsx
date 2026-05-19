@@ -7,7 +7,8 @@ import {
   CreditCard, LogOut, Plus, RefreshCw, Eye, EyeOff,
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
   Clock, CheckCircle, XCircle, Copy, Check,
-  TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu
+  TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu,
+  Shield, ArrowRight, Loader2
 } from 'lucide-react';
 
 const METHOD_LABELS: Record<string, string> = {
@@ -15,6 +16,129 @@ const METHOD_LABELS: Record<string, string> = {
   orange_money: 'Orange Money', wave: 'Wave',
 };
 
+// ── KYC status types ──────────────────────────────────────────────
+type KycStatus = 'approved' | 'rejected' | 'pending' | 'in_review' | null;
+
+interface KycData {
+  status: KycStatus;
+  method?: 'didit' | 'manual' | null;
+  rejectionReason?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+}
+
+// ── KYC Gate ──────────────────────────────────────────────────────
+/**
+ * Shown when the user's KYC is not yet approved.
+ * - pending / in_review → waiting state
+ * - rejected            → invite to retry
+ * - null                → first-time, invite to start
+ */
+function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void }) {
+  const router = useRouter();
+
+  const isPending = kyc?.status === 'pending' || kyc?.status === 'in_review';
+  const isRejected = kyc?.status === 'rejected';
+  const isNew = !kyc || !kyc.status;
+
+  return (
+    <div className="min-h-screen bg-surface-bg flex flex-col items-center justify-center px-5 py-16">
+      {/* Logo */}
+      <div className="flex items-center gap-2 mb-12">
+        <div className="w-9 h-9 bg-brand-orange rounded-xl flex items-center justify-center">
+          <CreditCard size={16} className="text-white" />
+        </div>
+        <span className="font-semibold tracking-wide">LFD WEB CARD</span>
+      </div>
+
+      <div className="w-full max-w-md">
+        {/* Icon */}
+        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg
+          ${isPending ? 'bg-yellow-400' : isRejected ? 'bg-red-500' : 'bg-brand-orange'}`}>
+          {isPending
+            ? <Clock size={34} className="text-white" />
+            : isRejected
+              ? <XCircle size={34} className="text-white" />
+              : <Shield size={34} className="text-white" />
+          }
+        </div>
+
+        {/* Title & description */}
+        {isPending && (
+          <>
+            <h1 className="text-2xl font-bold text-center mb-3">Vérification en cours</h1>
+            <p className="text-ink-secondary text-center text-sm leading-relaxed mb-2">
+              {kyc?.method === 'manual'
+                ? 'Votre dossier est en cours d\'examen par notre équipe. Vous recevrez une notification dès la décision (délai : 1 à 24 h).'
+                : 'Votre vérification automatique est en cours de traitement. Revenez dans quelques instants.'}
+            </p>
+            {kyc?.submittedAt && (
+              <p className="text-ink-muted text-center text-xs mb-8">
+                Soumis le {new Date(kyc.submittedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
+            {/* Animated dots */}
+            <div className="flex justify-center gap-2 mb-8">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-2 h-2 rounded-full bg-brand-orange animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800 text-center">
+              Vous serez notifié par email et dans l'application dès que votre identité sera vérifiée.
+            </div>
+          </>
+        )}
+
+        {isRejected && (
+          <>
+            <h1 className="text-2xl font-bold text-center mb-3">Vérification refusée</h1>
+            {kyc?.rejectionReason && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 text-center mb-4">
+                <strong>Raison :</strong> {kyc.rejectionReason}
+              </div>
+            )}
+            <p className="text-ink-secondary text-center text-sm leading-relaxed mb-8">
+              Vous pouvez soumettre à nouveau votre dossier avec des documents valides et lisibles.
+            </p>
+            <button onClick={() => router.push('/kyc')} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
+              Recommencer la vérification <ArrowRight size={16} />
+            </button>
+          </>
+        )}
+
+        {isNew && (
+          <>
+            <h1 className="text-2xl font-bold text-center mb-3">Vérifiez votre identité</h1>
+            <p className="text-ink-secondary text-center text-sm leading-relaxed mb-6">
+              La vérification d'identité est obligatoire avant d'accéder à votre tableau de bord et d'obtenir votre carte virtuelle LFD WEB CARD.
+            </p>
+
+            {/* Steps */}
+            <div className="space-y-3 mb-8">
+              {[
+                { icon: '🪪', label: 'Préparez votre pièce d\'identité (CNI, passeport ou permis)' },
+                { icon: '🤳', label: 'Prenez un selfie avec votre document' },
+                { icon: '⚡', label: 'Résultat immédiat (vérification automatique) ou sous 24 h (manuel)' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3 bg-surface-muted rounded-2xl px-4 py-3">
+                  <span className="text-lg">{step.icon}</span>
+                  <span className="text-sm text-ink-secondary">{step.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={() => router.push('/kyc')} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
+              Démarrer la vérification <ArrowRight size={16} />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Logo ─────────────────────────────────────────────────────────
 function Logo() {
   return (
     <div className="flex items-center gap-2">
@@ -414,7 +538,13 @@ function TxItem({ tx }: { tx: Transaction }) {
 // ── Main ─────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
-  const { appUser, firebaseUser, logout, getToken } = useAuth();
+  const { appUser, firebaseUser, logout, getToken, loading: authLoading } = useAuth();
+
+  // KYC state
+  const [kyc, setKyc] = useState<KycData | null>(null);
+  const [kycLoading, setKycLoading] = useState(true);
+
+  // Dashboard state
   const [cards, setCards] = useState<VirtualCard[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -425,6 +555,20 @@ export default function DashboardPage() {
   const [showReload, setShowReload] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // ── Fetch KYC status ─────────────────────────────────────────
+  const fetchKyc = useCallback(async () => {
+    if (!firebaseUser) return;
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/kyc/status', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setKyc(data.data);
+    } finally {
+      setKycLoading(false);
+    }
+  }, [firebaseUser, getToken]);
+
+  // ── Fetch dashboard data ──────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!firebaseUser) return;
     try {
@@ -441,13 +585,60 @@ export default function DashboardPage() {
   }, [firebaseUser, getToken]);
 
   useEffect(() => {
-    if (!loading && !appUser) { router.push('/auth/login'); return; }
-    if (firebaseUser) fetchData();
-  }, [firebaseUser, appUser, loading, router, fetchData]);
+    if (!authLoading && !firebaseUser) { router.push('/auth/login'); return; }
+    if (firebaseUser) {
+      fetchKyc();
+      fetchData();
+    }
+  }, [firebaseUser, authLoading, router, fetchKyc, fetchData]);
 
+  // Admin redirect
   useEffect(() => {
     if (appUser?.role === 'admin') router.push('/admin');
   }, [appUser, router]);
+
+  // ── Mark notification as read (optimistic) ────────────────────
+  const markAsRead = useCallback(async (notifId: string) => {
+    const notif = notifications.find(n => n.id === notifId);
+    if (!notif || notif.read) return;
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    try {
+      const token = await getToken();
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notificationId: notifId }),
+      });
+    } catch {
+      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: false } : n));
+    }
+  }, [notifications, getToken]);
+
+  // ── Mark all as read ──────────────────────────────────────────
+  const markAllAsRead = useCallback(async () => {
+    const unreadNotifs = notifications.filter(n => !n.read);
+    if (unreadNotifs.length === 0) return;
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      const token = await getToken();
+      await Promise.all(
+        unreadNotifs.map(n =>
+          fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ notificationId: n.id }),
+          })
+        )
+      );
+    } catch {
+      setNotifications(prev =>
+        prev.map(n => {
+          const wasUnread = unreadNotifs.find(u => u.id === n.id);
+          return wasUnread ? { ...n, read: false } : n;
+        })
+      );
+    }
+  }, [notifications, getToken]);
 
   const handleFreeze = async (card: VirtualCard) => {
     setFreezeLoading(true);
@@ -462,61 +653,11 @@ export default function DashboardPage() {
     } finally { setFreezeLoading(false); }
   };
 
-  // ── Mark notification as read (optimistic) ────────────────────
-  const markAsRead = useCallback(async (notifId: string) => {
-    const notif = notifications.find(n => n.id === notifId);
-    if (!notif || notif.read) return; // already read, skip
-
-    // Optimistic update — instant feedback, no loading state needed
-    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
-
-    try {
-      const token = await getToken();
-      await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ notificationId: notifId }),
-      });
-    } catch {
-      // Rollback on error
-      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: false } : n));
-    }
-  }, [notifications, getToken]);
-
-  // ── Mark all as read ──────────────────────────────────────────
-  const markAllAsRead = useCallback(async () => {
-    const unreadNotifs = notifications.filter(n => !n.read);
-    if (unreadNotifs.length === 0) return;
-
-    // Optimistic update
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-
-    try {
-      const token = await getToken();
-      await Promise.all(
-        unreadNotifs.map(n =>
-          fetch('/api/notifications', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ notificationId: n.id }),
-          })
-        )
-      );
-    } catch {
-      // Rollback
-      setNotifications(prev =>
-        prev.map(n => {
-          const wasUnread = unreadNotifs.find(u => u.id === n.id);
-          return wasUnread ? { ...n, read: false } : n;
-        })
-      );
-    }
-  }, [notifications, getToken]);
-
   const activeCard = cards.find(c => c.status === 'active' || c.status === 'frozen');
   const unread = notifications.filter(n => !n.read).length;
 
-  if (loading) {
+  // ── Loading screen ────────────────────────────────────────────
+  if (authLoading || kycLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-bg">
         <div className="text-center">
@@ -529,10 +670,25 @@ export default function DashboardPage() {
     );
   }
 
+  // ── KYC Gate: block dashboard if not approved ─────────────────
+  // Allow access only when status === 'approved'
+  const kycApproved = kyc?.status === 'approved';
+
+  if (!kycApproved) {
+    return <KycGate kyc={kyc} onVerify={() => router.push('/kyc')} />;
+  }
+
+  // ── Dashboard content (KYC approved) ─────────────────────────
   const renderContent = () => {
     switch (tab) {
       case 'home': return (
         <div className="space-y-6 animate-fade-in">
+          {/* KYC approved badge */}
+          <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium">
+            <CheckCircle size={12} className="text-brand-green" />
+            Identité vérifiée
+          </div>
+
           <div>
             <h1 className="text-2xl font-bold">Bonjour, {appUser?.displayName?.split(' ')[0]} 👋</h1>
             <p className="text-ink-secondary">Bienvenue sur votre espace LFD WEB CARD</p>
@@ -709,7 +865,11 @@ export default function DashboardPage() {
       />
       <div className="main-with-sidebar">
         <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8">
-          {renderContent()}
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-ink-muted">
+              <Loader2 size={24} className="animate-spin mr-3" />Chargement...
+            </div>
+          ) : renderContent()}
         </main>
       </div>
       <BottomNav active={tab} onNav={setTab} unread={unread} />
