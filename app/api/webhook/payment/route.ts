@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
 
   const { event, transaction } = body as { event?: string; transaction?: Record<string, unknown> };
   const raw = ((transaction?.status as string) || event || '').toLowerCase();
-  const isSuccess = ['successful','success','completed','paid','payment.completed'].includes(raw);
-  const isFailed = ['failed','failure','cancelled','rejected','payment.failed'].includes(raw);
+  const isSuccess = ['successful', 'success', 'completed', 'paid', 'payment.completed'].includes(raw);
+  const isFailed = ['failed', 'failure', 'cancelled', 'rejected', 'payment.failed'].includes(raw);
   if (!isSuccess && !isFailed) return OK();
 
   // Retrouver la transaction
@@ -30,10 +30,14 @@ export async function POST(req: NextRequest) {
       if (!s.empty) txDoc = s.docs[0];
     }
   }
+  // ✅ Fallback sur tx.total (montant client) et non tx.amount (montant carte)
   if (!txDoc && transaction?.amount) {
     const s = await adminDb.collection('transactions')
-      .where('status', '==', 'pending').where('amount', '==', transaction.amount as number)
-      .orderBy('createdAt', 'desc').limit(1).get();
+      .where('status', '==', 'pending')
+      .where('total', '==', transaction.amount as number)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
     if (!s.empty) txDoc = s.docs[0];
   }
   if (!txDoc) return OK();
@@ -44,10 +48,13 @@ export async function POST(req: NextRequest) {
   if (isFailed) {
     await txDoc.ref.update({ status: 'failed', completedAt: new Date().toISOString() });
     await adminDb.collection('notifications').add({
-      userId: tx.userId, type: 'payment_failed',
+      userId: tx.userId,
+      type: 'payment_failed',
       title: 'Paiement échoué ❌',
-      message: `Votre paiement de ${tx.amount?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`,
-      read: false, createdAt: new Date().toISOString(),
+      // ✅ On affiche tx.total (ce que le client devait payer) dans la notif
+      message: `Votre paiement de ${(tx.total ?? tx.amount)?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`,
+      read: false,
+      createdAt: new Date().toISOString(),
     });
     return OK();
   }
@@ -56,7 +63,11 @@ export async function POST(req: NextRequest) {
     if (tx.type === 'card_purchase') await handlePurchase(txDoc, tx, meta);
     else if (tx.type === 'card_reload') await handleReload(txDoc, tx);
   } catch (err) {
-    await txDoc.ref.update({ status: 'error', errorMessage: err instanceof Error ? err.message : 'Unknown', completedAt: new Date().toISOString() });
+    await txDoc.ref.update({
+      status: 'error',
+      errorMessage: err instanceof Error ? err.message : 'Unknown',
+      completedAt: new Date().toISOString(),
+    });
   }
   return OK();
 }
@@ -74,7 +85,6 @@ async function handlePurchase(
   const firstname = parts[0] || 'User';
   const lastname = parts.slice(1).join(' ') || 'Account';
 
-  // ✅ tx.brand stocké par buy/route.ts → fallback metadata → défaut visa
   const brand: CardBrand = (tx.brand as CardBrand) || (meta?.brand as CardBrand) || 'visa';
 
   const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string, initialload: 0 });
@@ -86,14 +96,23 @@ async function handlePurchase(
     userId: tx.userId,
     pagocardsCardId: pagoRes.cardid,
     last4: pagoRes.cardnumber?.slice(-4) || '****',
-    brand, expiryMonth: expiryMonth || '12', expiryYear: expiryYear || '28',
+    brand,
+    expiryMonth: expiryMonth || '12',
+    expiryYear: expiryYear || '28',
     cardholderName: `${firstname} ${lastname}`.toUpperCase(),
-    email: user.email, currency: 'USD',
-    balance: pagoRes.balance ?? 0, status: 'active',
+    email: user.email,
+    currency: 'USD',
+    balance: pagoRes.balance ?? 0,
+    status: 'active',
     createdAt: new Date().toISOString(),
   });
 
-  await txDoc.ref.update({ status: 'success', cardId: cardRef.id, pagocardsCardId: pagoRes.cardid, completedAt: new Date().toISOString() });
+  await txDoc.ref.update({
+    status: 'success',
+    cardId: cardRef.id,
+    pagocardsCardId: pagoRes.cardid,
+    completedAt: new Date().toISOString(),
+  });
 
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: cardRef.id, type: 'card_created',
@@ -102,26 +121,70 @@ async function handlePurchase(
     read: false, createdAt: new Date().toISOString(),
   });
 
-  await adminDb.collection('logs').add({ type: 'card_created', userId: tx.userId, cardId: cardRef.id, brand, createdAt: new Date().toISOString() });
+  await adminDb.collection('logs').add({
+    type: 'card_created', userId: tx.userId, cardId: cardRef.id, brand,
+    createdAt: new Date().toISOString(),
+  });
 }
 
-async function handleReload(txDoc: FirebaseFirestore.DocumentSnapshot, tx: FirebaseFirestore.DocumentData) {
+async function handleReload(
+  txDoc: FirebaseFirestore.DocumentSnapshot,
+  tx: FirebaseFirestore.DocumentData,
+) {
   const cardDoc = await adminDb.collection('cards').doc(tx.cardId as string).get();
   if (!cardDoc.exists) throw new Error('Card not found');
   const card = cardDoc.data()!;
 
+  // ✅ tx.amount = montant carte uniquement (sans les frais)
+  // tx.fee = frais plateforme (jamais envoyés à Pagocards)
+  // tx.total = ce que le client a payé (amount + fee)
   const amountUSD = parseFloat((tx.amount / 600).toFixed(2));
   if (amountUSD < 1) throw new Error('Amount too small');
 
   const brand: CardBrand = (card.brand as CardBrand) || 'visa';
-  const pagoRes = await fundCard({ brand, cardid: card.pagocardsCardId as string, email: card.email as string, amount: amountUSD });
+
+  // ✅ On envoie UNIQUEMENT tx.amount à Pagocards, jamais tx.fee ni tx.total
+  const pagoRes = await fundCard({
+    brand,
+    cardid: card.pagocardsCardId as string,
+    email: card.email as string,
+    amount: amountUSD,
+  });
   if (!pagoRes.success) throw new Error(pagoRes.message || 'Fund failed');
 
-  if (pagoRes.balance !== undefined) await cardDoc.ref.update({ balance: pagoRes.balance });
-  else await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
+  // Mise à jour solde carte
+  if (pagoRes.balance !== undefined) {
+    await cardDoc.ref.update({ balance: pagoRes.balance });
+  } else {
+    await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
+  }
 
-  await txDoc.ref.update({ status: 'success', amountUSD, completedAt: new Date().toISOString() });
+  // ✅ Frais plateforme séparés
+  const feeXOF = (tx.fee as number) ?? 0;
+  const feeUSD = parseFloat((feeXOF / 600).toFixed(2));
 
+  await txDoc.ref.update({
+    status: 'success',
+    amountUSD,                    // montant réellement crédité sur la carte
+    feeXOF,                       // frais plateforme en FCFA
+    feeUSD,                       // frais plateforme en USD
+    completedAt: new Date().toISOString(),
+  });
+
+  // ✅ Log revenu plateforme — séparé, jamais mélangé avec le flux carte
+  await adminDb.collection('platform_revenue').add({
+    type: 'reload_fee',
+    userId: tx.userId,
+    cardId: tx.cardId,
+    amountXOF: tx.amount,         // montant carte
+    totalXOF: tx.total,           // total client
+    feeXOF,                       // frais collectés
+    feeUSD,
+    rate: 0.12,
+    createdAt: new Date().toISOString(),
+  });
+
+  // ✅ Notif : on affiche le montant carte (pas le total avec frais)
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: tx.cardId, type: 'card_reloaded',
     title: 'Carte rechargée avec succès ✅',
@@ -129,5 +192,15 @@ async function handleReload(txDoc: FirebaseFirestore.DocumentSnapshot, tx: Fireb
     read: false, createdAt: new Date().toISOString(),
   });
 
-  await adminDb.collection('logs').add({ type: 'card_reloaded', userId: tx.userId, cardId: tx.cardId, amountXOF: tx.amount, amountUSD, createdAt: new Date().toISOString() });
+  await adminDb.collection('logs').add({
+    type: 'card_reloaded',
+    userId: tx.userId,
+    cardId: tx.cardId,
+    amountXOF: tx.amount,
+    amountUSD,
+    feeXOF,
+    feeUSD,
+    totalXOF: tx.total,
+    createdAt: new Date().toISOString(),
+  });
 }

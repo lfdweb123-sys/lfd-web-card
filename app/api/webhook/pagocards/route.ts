@@ -18,29 +18,48 @@ export async function POST(req: NextRequest) {
   if (eventName === 'cardTokenization.deliverActivationCode') {
     const p = payload as Record<string, string>;
     await adminDb.collection('notifications').add({
-      userId: card?.userId || null, cardId: cardDoc?.id || null, pagocardsCardId: cardId,
+      userId: card?.userId || null,
+      cardId: cardDoc?.id || null,
+      pagocardsCardId: cardId,
       type: 'wallet_activation',
       title: `Code ${p.digitalWalletName === 'googlePay' ? 'Google Pay' : 'Apple Pay'}`,
       message: `Votre code d'activation : ${p.activationCode}`,
-      activationCode: p.activationCode, digitalWalletName: p.digitalWalletName,
-      eventId: p.eventId, eventTargetId: p.eventTargetId,
-      read: false, createdAt: new Date().toISOString(),
+      activationCode: p.activationCode,
+      digitalWalletName: p.digitalWalletName,
+      eventId: p.eventId,
+      eventTargetId: p.eventTargetId,
+      read: false,
+      createdAt: new Date().toISOString(),
     });
+
   } else if (eventName === 'cardAuthentication.created') {
     const p = payload as Record<string, string>;
     await adminDb.collection('notifications').add({
-      userId: card?.userId || null, cardId: cardDoc?.id || null, pagocardsCardId: cardId,
+      userId: card?.userId || null,
+      cardId: cardDoc?.id || null,
+      pagocardsCardId: cardId,
       type: '3ds_required',
       title: 'Validation 3DS requise',
       message: `${p.merchantName} demande ${p.merchantAmount} ${p.merchantCurrency} — Validez depuis votre espace.`,
-      merchantName: p.merchantName, merchantAmount: p.merchantAmount,
-      merchantCurrency: p.merchantCurrency, maskedPan: p.maskedPan,
-      eventId: p.eventId, eventTargetId: p.eventTargetId,
-      read: false, requiresAction: true, createdAt: new Date().toISOString(),
+      merchantName: p.merchantName,
+      merchantAmount: p.merchantAmount,
+      merchantCurrency: p.merchantCurrency,
+      maskedPan: p.maskedPan,
+      eventId: p.eventId,
+      eventTargetId: p.eventTargetId,
+      read: false,
+      requiresAction: true,
+      createdAt: new Date().toISOString(),
     });
     if (cardDoc) await cardDoc.ref.update({ pendingAction: '3ds' });
   }
 
-  await adminDb.collection('logs').add({ type: 'pagocards_webhook', eventName, cardId, createdAt: new Date().toISOString() });
+  await adminDb.collection('logs').add({
+    type: 'pagocards_webhook',
+    eventName,
+    cardId,
+    createdAt: new Date().toISOString(),
+  });
+
   return OK();
 }

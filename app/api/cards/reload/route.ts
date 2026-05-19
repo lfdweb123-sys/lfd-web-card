@@ -17,19 +17,37 @@ export async function POST(req: NextRequest) {
 
     const { cardId, amount, country } = parsed.data;
 
-    const cardDoc = await adminDb.collection('cards').doc(cardId).get();
-    if (!cardDoc.exists) return NextResponse.json({ success: false, error: 'Carte introuvable.' }, { status: 404 });
-    const card = cardDoc.data()!;
-    if (card.userId !== user.uid) return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 });
-    if (card.status !== 'active') return NextResponse.json({ success: false, error: 'Carte non active.' }, { status: 400 });
+    // ✅ Séparation montant carte / frais plateforme
+    const fee = Math.round(amount * 0.12);  // frais 12% → ton wallet
+    const total = amount + fee;             // montant réel facturé au client
 
+    const cardDoc = await adminDb.collection('cards').doc(cardId).get();
+    if (!cardDoc.exists)
+      return NextResponse.json({ success: false, error: 'Carte introuvable.' }, { status: 404 });
+    const card = cardDoc.data()!;
+    if (card.userId !== user.uid)
+      return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 });
+    if (card.status !== 'active')
+      return NextResponse.json({ success: false, error: 'Carte non active.' }, { status: 400 });
+
+    // ✅ amount = montant carte (→ Pagocards via webhook)
+    // ✅ fee    = frais plateforme (→ loggés dans platform_revenue via webhook)
+    // ✅ total  = ce que la passerelle encaisse réellement
     const txRef = await adminDb.collection('transactions').add({
-      userId: user.uid, cardId, type: 'card_reload', amount,
-      currency: 'XOF', status: 'pending', createdAt: new Date().toISOString(),
+      userId: user.uid,
+      cardId,
+      type: 'card_reload',
+      amount,   // montant carte uniquement
+      fee,      // frais plateforme 12%
+      total,    // total client (amount + fee)
+      currency: 'XOF',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
     });
 
+    // La passerelle encaisse le total (amount + fee)
     const { url, pid } = await generatePaymentLink({
-      amount,
+      amount: total,
       description: `Rechargement carte *${card.last4}`,
       transactionId: txRef.id,
       userId: user.uid,
@@ -40,7 +58,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { url, transactionId: txRef.id } });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur';
-    if (msg === 'UNAUTHORIZED') return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    if (msg === 'UNAUTHORIZED')
+      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

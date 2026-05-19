@@ -246,10 +246,10 @@ function Pricing() {
           <div className="card p-8">
             <div className="w-12 h-12 bg-brand-green-light rounded-2xl flex items-center justify-center mb-5"><TrendingUp size={22} className="text-brand-green" /></div>
             <h3 className="font-bold text-xl mb-2">Rechargement</h3>
-            <div className="text-4xl font-bold mb-1 text-brand-green">0% <span className="text-xl font-medium text-ink-secondary">de frais</span></div>
+            <div className="text-4xl font-bold mb-1 text-brand-green">12% <span className="text-xl font-medium text-ink-secondary">de frais</span></div>
             <p className="text-ink-secondary text-sm mb-6">Rechargez le montant que vous voulez.</p>
             <ul className="space-y-3 mb-7">
-              {['Montant minimum : 1 000 FCFA', 'Conversion automatique en USD', 'Crédit instantané sur la carte', 'Via Mobile Money'].map(f => (
+              {['Montant minimum : 3 000 FCFA', 'Conversion automatique en USD', 'Crédit instantané sur la carte', 'Via Mobile Money'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-ink-secondary"><CheckCircle size={15} className="text-brand-green flex-shrink-0" />{f}</li>
               ))}
             </ul>

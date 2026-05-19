@@ -303,11 +303,16 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
 }
 
 // ── Reload Modal ─────────────────────────────────────────────────
+// ── Reload Modal ─────────────────────────────────────────────────
 function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string> }) {
   const [amount, setAmount] = useState(5000);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const usd = (amount / 600).toFixed(2);
+
+  // ✅ Séparation claire : montant carte vs frais plateforme
+  const fee = Math.round(amount * 0.12);
+  const total = amount + fee;            // ce que le client paie en tout
+  const usd = (amount / 600).toFixed(2); // ce qui atterrit réellement sur la carte
 
   const handle = async () => {
     if (amount < 1000) { setError('Minimum 1 000 FCFA'); return; }
@@ -317,11 +322,15 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
       const res = await fetch('/api/cards/reload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cardId: card.id, amount, country: country.toLowerCase() }),
+        body: JSON.stringify({
+          cardId: card.id,
+          amount,          // ✅ montant carte uniquement → converti en USD → envoyé à Pagocards
+          fee,             // ✅ frais plateforme (12%) → conservés dans ton wallet
+          country: country.toLowerCase(),
+        }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
-      // Ouvrir dans un nouvel onglet
       window.open(data.data.url, '_blank');
       onClose();
     } catch { setError('Erreur réseau.'); setLoading(false); }
@@ -331,31 +340,64 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
         <div className="flex justify-between items-start mb-5">
-          <div><h3 className="font-bold text-xl">Recharger la carte</h3><p className="text-ink-secondary text-sm">Carte •••• {card.last4}</p></div>
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+          <div>
+            <h3 className="font-bold text-xl">Recharger la carte</h3>
+            <p className="text-ink-secondary text-sm">Carte •••• {card.last4}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center">
+            <X size={15} />
+          </button>
         </div>
+
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
+
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Montant (FCFA)</label>
-          <input type="number" min={1000} step={500} value={amount} onChange={e => setAmount(Number(e.target.value))} className="input-field text-xl font-bold" />
-          <div className="text-ink-muted text-xs mt-1">≈ ${usd} USD sur votre carte</div>
+          <label className="block text-sm font-medium mb-2">Montant à créditer (FCFA)</label>
+          <input
+            type="number"
+            min={1000}
+            step={500}
+            value={amount}
+            onChange={e => setAmount(Number(e.target.value))}
+            className="input-field text-xl font-bold"
+          />
+          <div className="text-ink-muted text-xs mt-1">≈ ${usd} USD crédités sur votre carte</div>
         </div>
+
         <div className="flex gap-2 mb-5">
-          {[2000, 5000, 10000, 25000].map(a => (
-            <button key={a} onClick={() => setAmount(a)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${amount === a ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
+          {[3000, 5000, 10000, 25000].map(a => (
+            <button key={a} onClick={() => setAmount(a)}
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${amount === a ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
               {(a / 1000).toFixed(0)}k
             </button>
           ))}
         </div>
-        <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Rechargement carte</span><span className="font-medium">{amount.toLocaleString()} FCFA</span></div>
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="text-brand-green font-medium">Offerts</span></div>
-          <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{amount.toLocaleString()} FCFA</span></div>
+
+        {/* Récapitulatif transparent */}
+        <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm space-y-2">
+          <div className="flex justify-between">
+            <span className="text-ink-secondary">Crédit carte (≈ ${usd})</span>
+            <span className="font-medium">{amount.toLocaleString()} FCFA</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-secondary flex items-center gap-1.5">
+              Frais de service
+              <span className="text-[10px] bg-ink-muted/10 text-ink-muted px-1.5 py-0.5 rounded-full font-medium">12%</span>
+            </span>
+            <span className="font-medium text-ink-primary">+{fee.toLocaleString()} FCFA</span>
+          </div>
+          <div className="border-t border-surface-border pt-2 flex justify-between font-bold">
+            <span>Total à payer</span>
+            <span className="text-brand-orange">{total.toLocaleString()} FCFA</span>
+          </div>
         </div>
+
         <button onClick={handle} disabled={loading || amount < 1000} className="btn-primary w-full py-3.5">
-          {loading ? 'Redirection...' : `Recharger ${amount.toLocaleString()} FCFA →`}
+          {loading ? 'Redirection...' : `Payer ${total.toLocaleString()} FCFA →`}
         </button>
-        <p className="text-center text-xs text-ink-muted mt-2">Vous serez redirigé vers la page de paiement sécurisé</p>
+        <p className="text-center text-xs text-ink-muted mt-2">
+          Vous serez redirigé vers la page de paiement sécurisé
+        </p>
       </div>
     </div>
   );

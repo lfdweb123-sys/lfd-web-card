@@ -54,7 +54,7 @@ export default function TermsPage() {
             <p className="mb-3">Les tarifs applicables sont les suivants :</p>
             <ul className="list-disc pl-5 space-y-2">
               <li><strong className="text-ink-primary">Création de carte</strong> : 5 000 FCFA (paiement unique, non remboursable)</li>
-              <li><strong className="text-ink-primary">Rechargement</strong> : montant minimum de 1 000 FCFA, maximum de 500 000 FCFA</li>
+              <li><strong className="text-ink-primary">Rechargement</strong> : montant minimum de 3 000 FCFA, maximum de 500 000 FCFA</li>
               <li><strong className="text-ink-primary">Frais de rechargement</strong> : inclus dans le service (voir dashboard Pagocards pour les frais applicables)</li>
             </ul>
             <p className="mt-3">La conversion FCFA vers USD est effectuée au taux du marché en vigueur au moment de la transaction.</p>
