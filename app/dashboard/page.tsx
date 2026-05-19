@@ -615,7 +615,7 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <div className="main-with-sidebar">
-        <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8 max-w-7xl">
+        <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8">
           {renderContent()}
         </main>
       </div>
