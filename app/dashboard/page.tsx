@@ -8,7 +8,7 @@ import {
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
   Clock, CheckCircle, XCircle, Copy, Check,
   TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu,
-  Shield, ArrowRight, Loader2
+  Shield, ArrowRight, Loader2, Camera, Zap
 } from 'lucide-react';
 
 const METHOD_LABELS: Record<string, string> = {
