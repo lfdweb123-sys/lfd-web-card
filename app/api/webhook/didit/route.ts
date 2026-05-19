@@ -4,7 +4,7 @@
 // URL à configurer dans Didit Business Console → API & Webhooks
 //   https://card.lfdweb.com/api/webhook/didit
 //
-// Signature : X-Signature-V2 (recommandée par Didit)
+// Signature : X-Signature-V3(recommandée par Didit)
 // vendor_data = userId Firestore (passé lors de createSession)
 // Statuts : Approved | Declined | In Review | In Progress | Abandoned
 // ================================================================
@@ -16,7 +16,7 @@ import { adminDb } from '@/lib/firebase-admin';
 const OK = () => NextResponse.json({ message: 'Webhook event dispatched' });
 const WEBHOOK_SECRET = () => process.env.DIDIT_WEBHOOK_SECRET!;
 
-// ── Vérification HMAC X-Signature-V2 (recommandée Didit) ─────────
+// ── Vérification HMAC X-Signature-V3(recommandée Didit) ─────────
 function shortenFloats(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(shortenFloats);
   if (data !== null && typeof data === 'object') {
@@ -39,7 +39,7 @@ function sortKeysRecursive(obj: unknown): unknown {
   return obj;
 }
 
-function verifySignatureV2(body: Record<string, unknown>, sig: string, timestamp: string, secret: string): boolean {
+function verifySignatureV3(body: Record<string, unknown>, sig: string, timestamp: string, secret: string): boolean {
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - parseInt(timestamp, 10)) > 300) return false; // 5 min freshness
 
@@ -73,16 +73,16 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return OK(); }
 
-  const sigV2 = req.headers.get('x-signature-v2');
+  const sigV3= req.headers.get('x-signature-v3');
   const sigSimple = req.headers.get('x-signature-simple');
   const timestamp = req.headers.get('x-timestamp');
   const secret = WEBHOOK_SECRET();
 
   // Vérifier la signature (sauf en développement sans secret configuré)
   if (secret && timestamp) {
-    const validV2 = sigV2 && verifySignatureV2(body, sigV2, timestamp, secret);
-    const validSimple = !validV2 && sigSimple && verifySignatureSimple(body, sigSimple, timestamp, secret);
-    if (!validV2 && !validSimple) {
+    const validV3= sigV3 && verifySignatureV3(body, sigV3, timestamp, secret);
+    const validSimple = !validV3 && sigSimple && verifySignatureSimple(body, sigSimple, timestamp, secret);
+    if (!validV3 && !validSimple) {
       return NextResponse.json({ message: 'Invalid signature' }, { status: 401 });
     }
   }
