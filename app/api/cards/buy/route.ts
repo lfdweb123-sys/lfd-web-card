@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, rateLimit } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { generatePaymentLink } from '@/lib/payment-gateway';
-import { BuyCardSchema } from '@/lib/validations';
 
 const CARD_PRICE = Number(process.env.CARD_CREATION_PRICE) || 5000;
 
@@ -13,11 +12,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Trop de requêtes.' }, { status: 429 });
 
     const body = await req.json();
-    const parsed = BuyCardSchema.safeParse(body);
-    if (!parsed.success)
-      return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { country, method } = parsed.data;
+    // Validation manuelle — plus besoin de BuyCardSchema qui exigeait "method"
+    const country = (body.country as string)?.toUpperCase() || 'BJ';
+    const brand: 'visa' | 'mastercard' = body.brand === 'mastercard' ? 'mastercard' : 'visa';
+
+    if (!country) {
+      return NextResponse.json({ success: false, error: 'Pays requis.' }, { status: 400 });
+    }
 
     const existing = await adminDb.collection('cards')
       .where('userId', '==', user.uid)
@@ -28,12 +30,17 @@ export async function POST(req: NextRequest) {
 
     const txRef = await adminDb.collection('transactions').add({
       userId: user.uid, type: 'card_purchase', amount: CARD_PRICE,
-      currency: 'XOF', status: 'pending', createdAt: new Date().toISOString(),
+      currency: 'XOF', status: 'pending', brand,
+      createdAt: new Date().toISOString(),
     });
 
     const { url, pid } = await generatePaymentLink({
-      amount: CARD_PRICE, description: 'Achat carte virtuelle LFD WEB CARD',
-      transactionId: txRef.id, userId: user.uid, country, method,
+      amount: CARD_PRICE,
+      description: `Achat carte ${brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle LFD WEB CARD`,
+      transactionId: txRef.id,
+      userId: user.uid,
+      country,
+      brand,
     });
 
     await txRef.update({ pid });

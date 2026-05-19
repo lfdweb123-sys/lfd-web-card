@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success)
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { cardId, amount, country, method } = parsed.data;
+    const { cardId, amount, country } = parsed.data;
 
     const cardDoc = await adminDb.collection('cards').doc(cardId).get();
     if (!cardDoc.exists) return NextResponse.json({ success: false, error: 'Carte introuvable.' }, { status: 404 });
@@ -29,8 +29,11 @@ export async function POST(req: NextRequest) {
     });
 
     const { url, pid } = await generatePaymentLink({
-      amount, description: `Rechargement carte *${card.last4}`,
-      transactionId: txRef.id, userId: user.uid, country, method,
+      amount,
+      description: `Rechargement carte *${card.last4}`,
+      transactionId: txRef.id,
+      userId: user.uid,
+      country,
     });
 
     await txRef.update({ pid });

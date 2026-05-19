@@ -43,11 +43,17 @@ export async function POST(req: NextRequest) {
 
   if (isFailed) {
     await txDoc.ref.update({ status: 'failed', completedAt: new Date().toISOString() });
+    await adminDb.collection('notifications').add({
+      userId: tx.userId, type: 'payment_failed',
+      title: 'Paiement échoué ❌',
+      message: `Votre paiement de ${tx.amount?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`,
+      read: false, createdAt: new Date().toISOString(),
+    });
     return OK();
   }
 
   try {
-    if (tx.type === 'card_purchase') await handlePurchase(txDoc, tx);
+    if (tx.type === 'card_purchase') await handlePurchase(txDoc, tx, meta);
     else if (tx.type === 'card_reload') await handleReload(txDoc, tx);
   } catch (err) {
     await txDoc.ref.update({ status: 'error', errorMessage: err instanceof Error ? err.message : 'Unknown', completedAt: new Date().toISOString() });
@@ -55,7 +61,11 @@ export async function POST(req: NextRequest) {
   return OK();
 }
 
-async function handlePurchase(txDoc: FirebaseFirestore.DocumentSnapshot, tx: FirebaseFirestore.DocumentData) {
+async function handlePurchase(
+  txDoc: FirebaseFirestore.DocumentSnapshot,
+  tx: FirebaseFirestore.DocumentData,
+  meta?: Record<string, string>,
+) {
   const userDoc = await adminDb.collection('users').doc(tx.userId).get();
   if (!userDoc.exists) throw new Error('User not found');
   const user = userDoc.data()!;
@@ -63,7 +73,9 @@ async function handlePurchase(txDoc: FirebaseFirestore.DocumentSnapshot, tx: Fir
   const parts = ((user.displayName as string) || 'User Name').trim().split(/\s+/);
   const firstname = parts[0] || 'User';
   const lastname = parts.slice(1).join(' ') || 'Account';
-  const brand: CardBrand = (tx.cardBrand as CardBrand) || 'mastercard';
+
+  // ✅ tx.brand stocké par buy/route.ts → fallback metadata → défaut visa
+  const brand: CardBrand = (tx.brand as CardBrand) || (meta?.brand as CardBrand) || 'visa';
 
   const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string, initialload: 0 });
   if (!pagoRes.success) throw new Error(pagoRes.message || 'Card creation failed');
@@ -85,8 +97,8 @@ async function handlePurchase(txDoc: FirebaseFirestore.DocumentSnapshot, tx: Fir
 
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: cardRef.id, type: 'card_created',
-    title: 'Votre carte est prête !',
-    message: `Votre carte virtuelle ${brand} *${pagoRes.cardnumber?.slice(-4)} a été créée avec succès.`,
+    title: 'Votre carte est prête ! 🎉',
+    message: `Votre carte virtuelle ${brand === 'visa' ? 'Visa' : 'Mastercard'} *${pagoRes.cardnumber?.slice(-4)} a été créée avec succès.`,
     read: false, createdAt: new Date().toISOString(),
   });
 
@@ -101,7 +113,7 @@ async function handleReload(txDoc: FirebaseFirestore.DocumentSnapshot, tx: Fireb
   const amountUSD = parseFloat((tx.amount / 600).toFixed(2));
   if (amountUSD < 1) throw new Error('Amount too small');
 
-  const brand: CardBrand = (card.brand as CardBrand) || 'mastercard';
+  const brand: CardBrand = (card.brand as CardBrand) || 'visa';
   const pagoRes = await fundCard({ brand, cardid: card.pagocardsCardId as string, email: card.email as string, amount: amountUSD });
   if (!pagoRes.success) throw new Error(pagoRes.message || 'Fund failed');
 
@@ -112,7 +124,7 @@ async function handleReload(txDoc: FirebaseFirestore.DocumentSnapshot, tx: Fireb
 
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: tx.cardId, type: 'card_reloaded',
-    title: 'Carte rechargée avec succès',
+    title: 'Carte rechargée avec succès ✅',
     message: `${tx.amount.toLocaleString()} FCFA (~$${amountUSD}) ont été ajoutés à votre carte *${card.last4}.`,
     read: false, createdAt: new Date().toISOString(),
   });
