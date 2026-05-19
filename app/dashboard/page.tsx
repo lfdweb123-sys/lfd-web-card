@@ -117,12 +117,14 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
             {/* Steps */}
             <div className="space-y-3 mb-8">
               {[
-                { icon: '🪪', label: 'Préparez votre pièce d\'identité (CNI, passeport ou permis)' },
-                { icon: '🤳', label: 'Prenez un selfie avec votre document' },
-                { icon: '⚡', label: 'Résultat immédiat (vérification automatique) ou sous 24 h (manuel)' },
+                { icon: <CreditCard size={18} className="text-brand-orange" />, label: 'Préparez votre pièce d\'identité (CNI, passeport ou permis)' },
+                { icon: <Camera size={18} className="text-brand-orange" />, label: 'Prenez un selfie avec votre document' },
+                { icon: <Zap size={18} className="text-brand-orange" />, label: 'Résultat immédiat (vérification automatique) ou sous 24 h (manuel)' },
               ].map((step, i) => (
-                <div key={i} className="flex items-start gap-3 bg-surface-muted rounded-2xl px-4 py-3">
-                  <span className="text-lg">{step.icon}</span>
+                <div key={i} className="flex items-center gap-3 bg-surface-muted rounded-2xl px-4 py-3">
+                  <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
+                    {step.icon}
+                  </div>
                   <span className="text-sm text-ink-secondary">{step.label}</span>
                 </div>
               ))}
