@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
 import {
@@ -11,11 +10,6 @@ import {
   TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu
 } from 'lucide-react';
 
-const METHODS: Record<string, string[]> = {
-  BJ: ['mtn_money', 'moov_money'], CI: ['mtn_money', 'orange_money', 'wave'],
-  SN: ['orange_money', 'wave', 'mtn_money'], TG: ['mtn_money', 'moov_money'],
-  DEFAULT: ['mtn_money', 'moov_money', 'orange_money', 'wave'],
-};
 const METHOD_LABELS: Record<string, string> = {
   mtn_money: 'MTN Mobile Money', moov_money: 'Moov Money',
   orange_money: 'Orange Money', wave: 'Wave',
@@ -89,9 +83,7 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
   if (!open) return null;
   return (
     <>
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
-      {/* Drawer */}
       <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
         <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
           <Logo />
@@ -171,14 +163,19 @@ function BottomNav({ active, onNav, unread }: { active: string; onNav: (s: strin
 function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze: () => void; loading: boolean }) {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
-  const copy = async () => { await navigator.clipboard.writeText(`•••• •••• •••• ${card.last4}`); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const copy = async () => {
+    await navigator.clipboard.writeText(`•••• •••• •••• ${card.last4}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   const cls = card.status === 'frozen' ? 'vcard-frozen' : 'vcard';
   return (
     <div className={cls + ' shadow-xl'}>
       {card.status === 'frozen' && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-2 flex items-center gap-2">
-            <Snowflake size={15} className="text-blue-200" /><span className="text-blue-200 text-sm font-medium">Carte gelée</span>
+            <Snowflake size={15} className="text-blue-200" />
+            <span className="text-blue-200 text-sm font-medium">Carte gelée</span>
           </div>
         </div>
       )}
@@ -220,7 +217,6 @@ function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze:
 }
 
 // ── Buy Modal ─────────────────────────────────────────────────────
-// Choix Visa / Mastercard — pas de mode de paiement (géré par la passerelle)
 function BuyModal({ onClose, country, getToken }: { onClose: () => void; country: string; getToken: () => Promise<string> }) {
   const [brand, setBrand] = useState<'visa' | 'mastercard'>('visa');
   const [loading, setLoading] = useState(false);
@@ -237,7 +233,6 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
-      // Ouvrir dans un nouvel onglet
       window.open(data.data.url, '_blank');
       onClose();
     } catch { setError('Erreur réseau.'); setLoading(false); }
@@ -254,7 +249,6 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
 
-        {/* Choix du réseau */}
         <div className="mb-5">
           <label className="block text-sm font-medium mb-2">Type de carte</label>
           <div className="grid grid-cols-2 gap-3">
@@ -265,7 +259,6 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
             </button>
             <button onClick={() => setBrand('mastercard')}
               className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${brand === 'mastercard' ? 'border-brand-orange bg-brand-orange-light' : 'border-surface-border bg-surface-muted'}`}>
-              {/* Mastercard logo simplifié */}
               <div className="flex items-center -space-x-2">
                 <div className={`w-7 h-7 rounded-full ${brand === 'mastercard' ? 'bg-brand-orange' : 'bg-red-400'}`} />
                 <div className={`w-7 h-7 rounded-full opacity-80 ${brand === 'mastercard' ? 'bg-yellow-400' : 'bg-yellow-300'}`} />
@@ -275,7 +268,6 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
           </div>
         </div>
 
-        {/* Aperçu carte */}
         <div className="vcard mb-5 py-5 px-5 shadow-md" style={{ minHeight: 'auto' }}>
           <div className="text-white/40 text-[10px] tracking-widest mb-1">VOTRE NOUVELLE CARTE</div>
           <div className="font-mono text-white/70 tracking-[0.18em]">•••• •••• •••• ••••</div>
@@ -303,16 +295,14 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
 }
 
 // ── Reload Modal ─────────────────────────────────────────────────
-// ── Reload Modal ─────────────────────────────────────────────────
 function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string> }) {
   const [amount, setAmount] = useState(5000);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ✅ Séparation claire : montant carte vs frais plateforme
   const fee = Math.round(amount * 0.12);
-  const total = amount + fee;            // ce que le client paie en tout
-  const usd = (amount / 600).toFixed(2); // ce qui atterrit réellement sur la carte
+  const total = amount + fee;
+  const usd = (amount / 600).toFixed(2);
 
   const handle = async () => {
     if (amount < 1000) { setError('Minimum 1 000 FCFA'); return; }
@@ -322,12 +312,7 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
       const res = await fetch('/api/cards/reload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          cardId: card.id,
-          amount,          // ✅ montant carte uniquement → converti en USD → envoyé à Pagocards
-          fee,             // ✅ frais plateforme (12%) → conservés dans ton wallet
-          country: country.toLowerCase(),
-        }),
+        body: JSON.stringify({ cardId: card.id, amount, fee, country: country.toLowerCase() }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
@@ -354,10 +339,7 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">Montant à créditer (FCFA)</label>
           <input
-            type="number"
-            min={1000}
-            step={500}
-            value={amount}
+            type="number" min={1000} step={500} value={amount}
             onChange={e => setAmount(Number(e.target.value))}
             className="input-field text-xl font-bold"
           />
@@ -373,7 +355,6 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
           ))}
         </div>
 
-        {/* Récapitulatif transparent */}
         <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm space-y-2">
           <div className="flex justify-between">
             <span className="text-ink-secondary">Crédit carte (≈ ${usd})</span>
@@ -395,9 +376,7 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
         <button onClick={handle} disabled={loading || amount < 1000} className="btn-primary w-full py-3.5">
           {loading ? 'Redirection...' : `Payer ${total.toLocaleString()} FCFA →`}
         </button>
-        <p className="text-center text-xs text-ink-muted mt-2">
-          Vous serez redirigé vers la page de paiement sécurisé
-        </p>
+        <p className="text-center text-xs text-ink-muted mt-2">Vous serez redirigé vers la page de paiement sécurisé</p>
       </div>
     </div>
   );
@@ -415,7 +394,11 @@ function TxItem({ tx }: { tx: Transaction }) {
         <div>
           <div className="font-medium text-sm">{tx.type === 'card_purchase' ? 'Achat carte virtuelle' : 'Rechargement carte'}</div>
           <div className="flex items-center gap-1 text-xs text-ink-muted mt-0.5">
-            {tx.status === 'success' ? <CheckCircle size={12} className="text-brand-green" /> : tx.status === 'failed' ? <XCircle size={12} className="text-red-500" /> : <Clock size={12} className="text-yellow-500" />}
+            {tx.status === 'success'
+              ? <CheckCircle size={12} className="text-brand-green" />
+              : tx.status === 'failed'
+                ? <XCircle size={12} className="text-red-500" />
+                : <Clock size={12} className="text-yellow-500" />}
             {tx.status === 'success' ? 'Confirmé' : tx.status === 'failed' ? 'Échoué' : 'En attente'}
             {' · '}{new Date(tx.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
           </div>
@@ -471,12 +454,64 @@ export default function DashboardPage() {
     try {
       const token = await getToken();
       await fetch('/api/cards/freeze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cardId: card.id, action: card.status === 'frozen' ? 'unfreeze' : 'freeze' }),
       });
       await fetchData();
     } finally { setFreezeLoading(false); }
   };
+
+  // ── Mark notification as read (optimistic) ────────────────────
+  const markAsRead = useCallback(async (notifId: string) => {
+    const notif = notifications.find(n => n.id === notifId);
+    if (!notif || notif.read) return; // already read, skip
+
+    // Optimistic update — instant feedback, no loading state needed
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+
+    try {
+      const token = await getToken();
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notificationId: notifId }),
+      });
+    } catch {
+      // Rollback on error
+      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: false } : n));
+    }
+  }, [notifications, getToken]);
+
+  // ── Mark all as read ──────────────────────────────────────────
+  const markAllAsRead = useCallback(async () => {
+    const unreadNotifs = notifications.filter(n => !n.read);
+    if (unreadNotifs.length === 0) return;
+
+    // Optimistic update
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
+    try {
+      const token = await getToken();
+      await Promise.all(
+        unreadNotifs.map(n =>
+          fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ notificationId: n.id }),
+          })
+        )
+      );
+    } catch {
+      // Rollback
+      setNotifications(prev =>
+        prev.map(n => {
+          const wasUnread = unreadNotifs.find(u => u.id === n.id);
+          return wasUnread ? { ...n, read: false } : n;
+        })
+      );
+    }
+  }, [notifications, getToken]);
 
   const activeCard = cards.find(c => c.status === 'active' || c.status === 'frozen');
   const unread = notifications.filter(n => !n.read).length;
@@ -510,7 +545,9 @@ export default function DashboardPage() {
             <div className="card p-4">
               <div className="text-ink-secondary text-xs mb-1">Statut carte</div>
               <div className="text-sm font-bold mt-1">
-                {activeCard ? <span className={activeCard.status === 'active' ? 'text-brand-green' : 'text-blue-500'}>{activeCard.status === 'active' ? '● Active' : '❄ Gelée'}</span> : <span className="text-ink-muted">Aucune carte</span>}
+                {activeCard
+                  ? <span className={activeCard.status === 'active' ? 'text-brand-green' : 'text-blue-500'}>{activeCard.status === 'active' ? '● Active' : '❄ Gelée'}</span>
+                  : <span className="text-ink-muted">Aucune carte</span>}
               </div>
             </div>
           </div>
@@ -606,7 +643,18 @@ export default function DashboardPage() {
 
       case 'notifications': return (
         <div className="space-y-5 animate-fade-in">
-          <h2 className="text-xl font-bold">Notifications</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Notifications</h2>
+            {unread > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="text-xs font-medium text-brand-orange hover:text-brand-orange/70 transition-colors flex items-center gap-1"
+              >
+                <CheckCircle size={13} /> Tout marquer comme lu
+              </button>
+            )}
+          </div>
+
           {notifications.length === 0 ? (
             <div className="card p-8 text-center">
               <Bell size={36} className="text-ink-muted mx-auto mb-3" />
@@ -615,10 +663,20 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {notifications.map(n => (
-                <div key={n.id} className={`card p-4 ${!n.read ? 'border-l-4 border-brand-orange' : ''}`}>
+                <div
+                  key={n.id}
+                  onClick={() => markAsRead(n.id)}
+                  className={`card p-4 transition-all select-none ${
+                    !n.read
+                      ? 'border-l-4 border-brand-orange cursor-pointer hover:shadow-card-hover active:scale-[0.99]'
+                      : 'opacity-75'
+                  }`}
+                >
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${n.type === '3ds_required' ? 'bg-red-50' : 'bg-brand-orange-light'}`}>
-                      {n.type === '3ds_required' ? <AlertCircle size={16} className="text-red-500" /> : <Bell size={16} className="text-brand-orange" />}
+                      {n.type === '3ds_required'
+                        ? <AlertCircle size={16} className="text-red-500" />
+                        : <Bell size={16} className="text-brand-orange" />}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm">{n.title}</div>
@@ -638,13 +696,8 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-surface-bg">
-      {/* Sidebar desktop (cachée sur mobile) */}
       <Sidebar active={tab} onNav={setTab} onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} unread={unread} />
-
-      {/* Top bar mobile avec bouton hamburger */}
       <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unread} />
-
-      {/* Drawer mobile */}
       <MobileDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -654,18 +707,12 @@ export default function DashboardPage() {
         userName={appUser?.displayName || 'Utilisateur'}
         unread={unread}
       />
-
-      {/* Main content */}
       <div className="main-with-sidebar">
         <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8">
           {renderContent()}
         </main>
       </div>
-
-      {/* Bottom nav mobile */}
       <BottomNav active={tab} onNav={setTab} unread={unread} />
-
-      {/* Modals */}
       {showBuy && <BuyModal onClose={() => setShowBuy(false)} country={appUser?.country || 'BJ'} getToken={getToken} />}
       {showReload && activeCard && <ReloadModal card={activeCard} onClose={() => setShowReload(false)} country={appUser?.country || 'BJ'} getToken={getToken} />}
     </div>

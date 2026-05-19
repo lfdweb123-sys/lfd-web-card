@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
 import { createCard, fundCard, type CardBrand } from '@/lib/pagocards';
+import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 
 const OK = () => NextResponse.json({ received: true });
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       if (!s.empty) txDoc = s.docs[0];
     }
   }
-  // ✅ Fallback sur tx.total (montant client) et non tx.amount (montant carte)
+  // Fallback sur tx.total (montant client) et non tx.amount (montant carte)
   if (!txDoc && transaction?.amount) {
     const s = await adminDb.collection('transactions')
       .where('status', '==', 'pending')
@@ -51,11 +52,28 @@ export async function POST(req: NextRequest) {
       userId: tx.userId,
       type: 'payment_failed',
       title: 'Paiement échoué ❌',
-      // ✅ On affiche tx.total (ce que le client devait payer) dans la notif
       message: `Votre paiement de ${(tx.total ?? tx.amount)?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`,
       read: false,
       createdAt: new Date().toISOString(),
     });
+
+    // Email échec si c'est un rechargement
+    if (tx.type === 'card_reload' && tx.cardId) {
+      const cardDoc = await adminDb.collection('cards').doc(tx.cardId as string).get();
+      const card = cardDoc.data();
+      const userDoc = await adminDb.collection('users').doc(tx.userId as string).get();
+      const user = userDoc.data();
+      if (user?.email && card?.last4) {
+        await sendReloadFailedEmail({
+          email: user.email as string,
+          name: (user.displayName as string) || 'Client',
+          amountXOF: tx.amount as number,
+          last4: card.last4 as string,
+          date: new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }),
+        });
+      }
+    }
+
     return OK();
   }
 
@@ -135,15 +153,15 @@ async function handleReload(
   if (!cardDoc.exists) throw new Error('Card not found');
   const card = cardDoc.data()!;
 
-  // ✅ tx.amount = montant carte uniquement (sans les frais)
-  // tx.fee = frais plateforme (jamais envoyés à Pagocards)
-  // tx.total = ce que le client a payé (amount + fee)
+  // tx.amount = montant carte uniquement (sans les frais)
+  // tx.fee    = frais plateforme (jamais envoyés à Pagocards)
+  // tx.total  = ce que le client a payé (amount + fee)
   const amountUSD = parseFloat((tx.amount / 600).toFixed(2));
   if (amountUSD < 1) throw new Error('Amount too small');
 
   const brand: CardBrand = (card.brand as CardBrand) || 'visa';
 
-  // ✅ On envoie UNIQUEMENT tx.amount à Pagocards, jamais tx.fee ni tx.total
+  // On envoie UNIQUEMENT tx.amount à Pagocards, jamais tx.fee ni tx.total
   const pagoRes = await fundCard({
     brand,
     cardid: card.pagocardsCardId as string,
@@ -159,38 +177,51 @@ async function handleReload(
     await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
   }
 
-  // ✅ Frais plateforme séparés
   const feeXOF = (tx.fee as number) ?? 0;
   const feeUSD = parseFloat((feeXOF / 600).toFixed(2));
 
   await txDoc.ref.update({
     status: 'success',
-    amountUSD,                    // montant réellement crédité sur la carte
-    feeXOF,                       // frais plateforme en FCFA
-    feeUSD,                       // frais plateforme en USD
+    amountUSD,
+    feeXOF,
+    feeUSD,
     completedAt: new Date().toISOString(),
   });
 
-  // ✅ Log revenu plateforme — séparé, jamais mélangé avec le flux carte
+  // Log revenu plateforme
   await adminDb.collection('platform_revenue').add({
     type: 'reload_fee',
     userId: tx.userId,
     cardId: tx.cardId,
-    amountXOF: tx.amount,         // montant carte
-    totalXOF: tx.total,           // total client
-    feeXOF,                       // frais collectés
+    amountXOF: tx.amount,
+    totalXOF: tx.total,
+    feeXOF,
     feeUSD,
     rate: 0.12,
     createdAt: new Date().toISOString(),
   });
 
-  // ✅ Notif : on affiche le montant carte (pas le total avec frais)
+  // Notif in-app
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: tx.cardId, type: 'card_reloaded',
     title: 'Carte rechargée avec succès ✅',
     message: `${tx.amount.toLocaleString()} FCFA (~$${amountUSD}) ont été ajoutés à votre carte *${card.last4}.`,
     read: false, createdAt: new Date().toISOString(),
   });
+
+  // Email succès rechargement
+  const userDoc = await adminDb.collection('users').doc(tx.userId as string).get();
+  const user = userDoc.data();
+  if (user?.email) {
+    await sendReloadSuccessEmail({
+      email: user.email as string,
+      name: (user.displayName as string) || 'Client',
+      amountXOF: tx.amount as number,
+      amountUSD,
+      last4: card.last4 as string,
+      date: new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }),
+    });
+  }
 
   await adminDb.collection('logs').add({
     type: 'card_reloaded',
