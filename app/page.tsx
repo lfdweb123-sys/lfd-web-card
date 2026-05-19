@@ -315,38 +315,55 @@ function Footer() {
   return (
 <footer className="bg-white border-t border-surface-border py-12 px-5 sm:px-6">
   <div className="max-w-6xl mx-auto">
-    <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-10">
-      <div className="max-w-xs">
+    {/* 4 colonnes desktop / 1 colonne mobile */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 text-sm">
+
+      {/* Col 1 — Brand */}
+      <div>
         <Logo />
-        <p className="text-ink-secondary text-sm leading-relaxed mt-3">La carte virtuelle internationale conçue pour l'Afrique. Payez partout, simplement.</p>
+        <p className="text-ink-secondary text-sm leading-relaxed mt-3">
+          La carte virtuelle internationale conçue pour l'Afrique. Payez partout, simplement.
+        </p>
       </div>
-      <div className="grid grid-cols-2 gap-8 text-sm">
-        <div>
-          <h4 className="font-semibold mb-3">Produit</h4>
-          <ul className="space-y-2 text-ink-secondary">
-            <li><a href="#features" className="hover:text-ink-primary transition-colors">Fonctionnalités</a></li>
-            <li><a href="#pricing" className="hover:text-ink-primary transition-colors">Tarifs</a></li>
-            <li><a href="#how" className="hover:text-ink-primary transition-colors">Comment ça marche</a></li>
-            <li className="pt-3 mt-1 border-t border-surface-border">
-              <span className="font-semibold text-ink-primary">Compte</span>
-            </li>
-            <li><Link href="/auth/register" className="hover:text-ink-primary transition-colors">S'inscrire</Link></li>
-            <li><Link href="/auth/login" className="hover:text-ink-primary transition-colors">Se connecter</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-semibold mb-3">Légal</h4>
-          <ul className="space-y-2 text-ink-secondary">
-            <li><Link href="/legal/privacy" className="hover:text-ink-primary transition-colors">Confidentialité</Link></li>
-            <li><Link href="/legal/terms" className="hover:text-ink-primary transition-colors">Conditions d'utilisation</Link></li>
-            <li><a href="#faq" className="hover:text-ink-primary transition-colors">FAQ</a></li>
-          </ul>
-        </div>
+
+      {/* Col 2 — Produit */}
+      <div>
+        <h4 className="font-semibold mb-3">Produit</h4>
+        <ul className="space-y-2 text-ink-secondary">
+          <li><a href="#features" className="hover:text-ink-primary transition-colors">Fonctionnalités</a></li>
+          <li><a href="#pricing" className="hover:text-ink-primary transition-colors">Tarifs</a></li>
+          <li><a href="#how" className="hover:text-ink-primary transition-colors">Comment ça marche</a></li>
+        </ul>
       </div>
+
+      {/* Col 3 — Compte */}
+      <div>
+        <h4 className="font-semibold mb-3">Compte</h4>
+        <ul className="space-y-2 text-ink-secondary">
+          <li><Link href="/auth/register" className="hover:text-ink-primary transition-colors">S'inscrire</Link></li>
+          <li><Link href="/auth/login" className="hover:text-ink-primary transition-colors">Se connecter</Link></li>
+        </ul>
+      </div>
+
+      {/* Col 4 — Légal */}
+      <div>
+        <h4 className="font-semibold mb-3">Légal</h4>
+        <ul className="space-y-2 text-ink-secondary">
+          <li><Link href="/legal/privacy" className="hover:text-ink-primary transition-colors">Confidentialité</Link></li>
+          <li><Link href="/legal/terms" className="hover:text-ink-primary transition-colors">Conditions d'utilisation</Link></li>
+          <li><a href="#faq" className="hover:text-ink-primary transition-colors">FAQ</a></li>
+        </ul>
+      </div>
+
     </div>
+
+    {/* Bottom bar */}
     <div className="border-t border-surface-border pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-ink-muted">
       <div>© 2025 LFD WEB CARD. Tous droits réservés.</div>
-      <div className="flex items-center gap-1.5"><Shield size={13} className="text-brand-green" />Paiements sécurisés par LFD Gateway</div>
+      <div className="flex items-center gap-1.5">
+        <Shield size={13} className="text-brand-green" />
+        Paiements sécurisés par LFD Gateway
+      </div>
     </div>
   </div>
 </footer>
