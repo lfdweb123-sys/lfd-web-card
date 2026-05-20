@@ -93,7 +93,7 @@ function UserMenu() {
                 Mon tableau de bord
               </Link>
               <Link
-                href="/dashboard/profile"
+                href="/profile"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-colors"
               >
@@ -846,7 +846,7 @@ function Footer() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/dashboard/profile" className="hover:text-ink-primary transition-colors">
+                    <Link href="/profile" className="hover:text-ink-primary transition-colors">
                       Mon profil
                     </Link>
                   </li>
