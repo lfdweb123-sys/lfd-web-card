@@ -8,7 +8,7 @@ import {
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
   Clock, CheckCircle, XCircle, Copy, Check,
   TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu,
-  Shield, ArrowRight, Loader2, Camera, Zap
+  Shield, ArrowRight, Loader2, Camera, Zap, Layers
 } from 'lucide-react';
 
 const METHOD_LABELS: Record<string, string> = {
@@ -16,7 +16,7 @@ const METHOD_LABELS: Record<string, string> = {
   orange_money: 'Orange Money', wave: 'Wave',
 };
 
-// ── KYC status types ──────────────────────────────────────────────
+// ── KYC ──────────────────────────────────────────────────────────
 type KycStatus = 'approved' | 'rejected' | 'pending' | 'in_review' | null;
 
 interface KycData {
@@ -27,49 +27,33 @@ interface KycData {
   approvedAt?: string;
 }
 
-// ── KYC Gate ──────────────────────────────────────────────────────
-/**
- * Shown when the user's KYC is not yet approved.
- * - pending / in_review → waiting state
- * - rejected            → invite to retry
- * - null                → first-time, invite to start
- */
 function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void }) {
   const router = useRouter();
-
   const isPending = kyc?.status === 'pending' || kyc?.status === 'in_review';
   const isRejected = kyc?.status === 'rejected';
   const isNew = !kyc || !kyc.status;
 
   return (
     <div className="min-h-screen bg-surface-bg flex flex-col items-center justify-center px-5 py-16">
-      {/* Logo */}
       <div className="flex items-center gap-2 mb-12">
         <div className="w-9 h-9 bg-brand-orange rounded-xl flex items-center justify-center">
           <CreditCard size={16} className="text-white" />
         </div>
         <span className="font-semibold tracking-wide">LFD WEB CARD</span>
       </div>
-
       <div className="w-full max-w-md">
-        {/* Icon */}
         <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg
           ${isPending ? 'bg-yellow-400' : isRejected ? 'bg-red-500' : 'bg-brand-orange'}`}>
-          {isPending
-            ? <Clock size={34} className="text-white" />
-            : isRejected
-              ? <XCircle size={34} className="text-white" />
-              : <Shield size={34} className="text-white" />
-          }
+          {isPending ? <Clock size={34} className="text-white" />
+            : isRejected ? <XCircle size={34} className="text-white" />
+            : <Shield size={34} className="text-white" />}
         </div>
-
-        {/* Title & description */}
         {isPending && (
           <>
             <h1 className="text-2xl font-bold text-center mb-3">Vérification en cours</h1>
             <p className="text-ink-secondary text-center text-sm leading-relaxed mb-2">
               {kyc?.method === 'manual'
-                ? 'Votre dossier est en cours d\'examen par notre équipe. Vous recevrez une notification dès la décision (délai : 1 à 24 h).'
+                ? "Votre dossier est en cours d'examen par notre équipe. Vous recevrez une notification dès la décision (délai : 1 à 24 h)."
                 : 'Votre vérification automatique est en cours de traitement. Revenez dans quelques instants.'}
             </p>
             {kyc?.submittedAt && (
@@ -77,11 +61,9 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
                 Soumis le {new Date(kyc.submittedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
-            {/* Animated dots */}
             <div className="flex justify-center gap-2 mb-8">
               {[0, 1, 2].map(i => (
-                <div key={i} className="w-2 h-2 rounded-full bg-brand-orange animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }} />
+                <div key={i} className="w-2 h-2 rounded-full bg-brand-orange animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800 text-center">
@@ -89,7 +71,6 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
             </div>
           </>
         )}
-
         {isRejected && (
           <>
             <h1 className="text-2xl font-bold text-center mb-3">Vérification refusée</h1>
@@ -106,30 +87,24 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
             </button>
           </>
         )}
-
         {isNew && (
           <>
             <h1 className="text-2xl font-bold text-center mb-3">Vérifiez votre identité</h1>
             <p className="text-ink-secondary text-center text-sm leading-relaxed mb-6">
               La vérification d'identité est obligatoire avant d'accéder à votre tableau de bord et d'obtenir votre carte virtuelle LFD WEB CARD.
             </p>
-
-            {/* Steps */}
             <div className="space-y-3 mb-8">
               {[
-                { icon: <CreditCard size={18} className="text-brand-orange" />, label: 'Préparez votre pièce d\'identité (CNI, passeport ou permis)' },
+                { icon: <CreditCard size={18} className="text-brand-orange" />, label: "Préparez votre pièce d'identité (CNI, passeport ou permis)" },
                 { icon: <Camera size={18} className="text-brand-orange" />, label: 'Prenez un selfie avec votre document' },
                 { icon: <Zap size={18} className="text-brand-orange" />, label: 'Résultat immédiat (vérification automatique) ou sous 24 h (manuel)' },
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-3 bg-surface-muted rounded-2xl px-4 py-3">
-                  <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
-                    {step.icon}
-                  </div>
+                  <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">{step.icon}</div>
                   <span className="text-sm text-ink-secondary">{step.label}</span>
                 </div>
               ))}
             </div>
-
             <button onClick={() => router.push('/kyc')} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
               Démarrer la vérification <ArrowRight size={16} />
             </button>
@@ -152,22 +127,25 @@ function Logo() {
   );
 }
 
+// ── Nav items ─────────────────────────────────────────────────────
+function navItems(unread: number) {
+  return [
+    { id: 'home', label: 'Accueil', icon: <Home size={18} /> },
+    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} /> },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
+  ];
+}
+
 // ── Sidebar desktop ───────────────────────────────────────────────
 function Sidebar({ active, onNav, onLogout, userName, unread }: {
   active: string; onNav: (s: string) => void; onLogout: () => void;
   userName: string; unread: number;
 }) {
-  const items = [
-    { id: 'home', label: 'Accueil', icon: <Home size={18} /> },
-    { id: 'card', label: 'Ma carte', icon: <CreditCard size={18} /> },
-    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
-  ];
+  const items = navItems(unread);
   return (
     <aside className="sidebar-fixed hidden md:flex flex-col">
-      <div className="px-5 py-5 border-b border-surface-border">
-        <Logo />
-      </div>
+      <div className="px-5 py-5 border-b border-surface-border"><Logo /></div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)}
@@ -200,12 +178,7 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
   open: boolean; onClose: () => void; active: string; onNav: (s: string) => void;
   onLogout: () => void; userName: string; unread: number;
 }) {
-  const items = [
-    { id: 'home', label: 'Accueil', icon: <Home size={18} /> },
-    { id: 'card', label: 'Ma carte', icon: <CreditCard size={18} /> },
-    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
-  ];
+  const items = navItems(unread);
   if (!open) return null;
   return (
     <>
@@ -213,9 +186,7 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
       <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
         <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
           <Logo />
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center">
-            <X size={15} />
-          </button>
+          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {items.map(item => (
@@ -232,9 +203,7 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
             <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
               <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{userName}</div>
-            </div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{userName}</div></div>
           </div>
           <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
             <LogOut size={16} /> Déconnexion
@@ -249,9 +218,7 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
 function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }) {
   return (
     <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-white border-b border-surface-border px-4 h-14 flex items-center justify-between">
-      <button onClick={onMenu} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
-        <Menu size={18} />
-      </button>
+      <button onClick={onMenu} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center"><Menu size={18} /></button>
       <Logo />
       <div className="w-9 h-9 flex items-center justify-center relative">
         <Bell size={18} className="text-ink-secondary" />
@@ -261,11 +228,11 @@ function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }
   );
 }
 
-// ── Bottom nav (mobile) ─────────────────────────────────────────
+// ── Bottom nav (mobile) ───────────────────────────────────────────
 function BottomNav({ active, onNav, unread }: { active: string; onNav: (s: string) => void; unread: number }) {
   const items = [
     { id: 'home', label: 'Accueil', icon: <Home size={20} /> },
-    { id: 'card', label: 'Carte', icon: <CreditCard size={20} /> },
+    { id: 'card', label: 'Cartes', icon: <CreditCard size={20} /> },
     { id: 'history', label: 'Historique', icon: <TrendingUp size={20} /> },
     { id: 'notifications', label: 'Alertes', icon: <Bell size={20} />, badge: unread },
   ];
@@ -285,7 +252,7 @@ function BottomNav({ active, onNav, unread }: { active: string; onNav: (s: strin
   );
 }
 
-// ── Virtual Card ─────────────────────────────────────────────────
+// ── Virtual Card Display ──────────────────────────────────────────
 function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze: () => void; loading: boolean }) {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -342,8 +309,38 @@ function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze:
   );
 }
 
+// ── Mini card preview (for card list) ────────────────────────────
+function CardMini({ card, active, onClick }: { card: VirtualCard; active: boolean; onClick: () => void }) {
+  const isFrozen = card.status === 'frozen';
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${active ? 'border-brand-orange bg-brand-orange-light/30' : 'border-surface-border bg-white hover:border-brand-orange/40'}`}
+    >
+      {/* Mini card icon */}
+      <div className={`w-12 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isFrozen ? 'bg-blue-500/20' : 'bg-gradient-to-br from-gray-800 to-gray-900'}`}>
+        {isFrozen
+          ? <Snowflake size={14} className="text-blue-400" />
+          : <CreditCard size={14} className="text-white/80" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold uppercase tracking-wide">{card.brand}</div>
+        <div className="text-xs text-ink-muted font-mono">•••• {card.last4}</div>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <div className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isFrozen ? 'bg-blue-100 text-blue-600' : 'bg-brand-green-light text-brand-green'}`}>
+          {isFrozen ? 'Gelée' : 'Active'}
+        </div>
+        <div className="text-xs text-ink-muted mt-1">${card.balance.toFixed(2)}</div>
+      </div>
+    </button>
+  );
+}
+
 // ── Buy Modal ─────────────────────────────────────────────────────
-function BuyModal({ onClose, country, getToken }: { onClose: () => void; country: string; getToken: () => Promise<string> }) {
+function BuyModal({ onClose, country, getToken, hasCards }: {
+  onClose: () => void; country: string; getToken: () => Promise<string>; hasCards: boolean;
+}) {
   const [brand, setBrand] = useState<'visa' | 'mastercard'>('visa');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -369,11 +366,19 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
       <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
         <div className="flex justify-between items-start mb-5">
           <div>
-            <h3 className="font-bold text-xl">Acheter une carte</h3>
+            <h3 className="font-bold text-xl">{hasCards ? 'Commander une nouvelle carte' : 'Acheter une carte'}</h3>
             <p className="text-ink-secondary text-sm">Paiement unique de 5 000 FCFA</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
+
+        {/* Info banner si déjà une carte */}
+        {hasCards && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-5 flex items-start gap-2 text-sm text-blue-700">
+            <Layers size={15} className="flex-shrink-0 mt-0.5" />
+            <span>Vous pouvez posséder plusieurs cartes virtuelles pour différents usages (abonnements, achats, etc.).</span>
+          </div>
+        )}
 
         <div className="mb-5">
           <label className="block text-sm font-medium mb-2">Type de carte</label>
@@ -420,8 +425,10 @@ function BuyModal({ onClose, country, getToken }: { onClose: () => void; country
   );
 }
 
-// ── Reload Modal ─────────────────────────────────────────────────
-function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string> }) {
+// ── Reload Modal ──────────────────────────────────────────────────
+function ReloadModal({ card, onClose, country, getToken }: {
+  card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string>;
+}) {
   const [amount, setAmount] = useState(5000);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -455,20 +462,15 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
             <h3 className="font-bold text-xl">Recharger la carte</h3>
             <p className="text-ink-secondary text-sm">Carte •••• {card.last4}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center">
-            <X size={15} />
-          </button>
+          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
 
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
 
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">Montant à créditer (FCFA)</label>
-          <input
-            type="number" min={1000} step={500} value={amount}
-            onChange={e => setAmount(Number(e.target.value))}
-            className="input-field text-xl font-bold"
-          />
+          <input type="number" min={1000} step={500} value={amount}
+            onChange={e => setAmount(Number(e.target.value))} className="input-field text-xl font-bold" />
           <div className="text-ink-muted text-xs mt-1">≈ ${usd} USD crédités sur votre carte</div>
         </div>
 
@@ -508,7 +510,7 @@ function ReloadModal({ card, onClose, country, getToken }: { card: VirtualCard; 
   );
 }
 
-// ── Transaction item ─────────────────────────────────────────────
+// ── Transaction item ──────────────────────────────────────────────
 function TxItem({ tx }: { tx: Transaction }) {
   const isCredit = tx.type === 'card_reload';
   return (
@@ -520,11 +522,9 @@ function TxItem({ tx }: { tx: Transaction }) {
         <div>
           <div className="font-medium text-sm">{tx.type === 'card_purchase' ? 'Achat carte virtuelle' : 'Rechargement carte'}</div>
           <div className="flex items-center gap-1 text-xs text-ink-muted mt-0.5">
-            {tx.status === 'success'
-              ? <CheckCircle size={12} className="text-brand-green" />
-              : tx.status === 'failed'
-                ? <XCircle size={12} className="text-red-500" />
-                : <Clock size={12} className="text-yellow-500" />}
+            {tx.status === 'success' ? <CheckCircle size={12} className="text-brand-green" />
+              : tx.status === 'failed' ? <XCircle size={12} className="text-red-500" />
+              : <Clock size={12} className="text-yellow-500" />}
             {tx.status === 'success' ? 'Confirmé' : tx.status === 'failed' ? 'Échoué' : 'En attente'}
             {' · '}{new Date(tx.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
           </div>
@@ -537,17 +537,16 @@ function TxItem({ tx }: { tx: Transaction }) {
   );
 }
 
-// ── Main ─────────────────────────────────────────────────────────
+// ── Main Dashboard ────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
   const { appUser, firebaseUser, logout, getToken, loading: authLoading } = useAuth();
 
-  // KYC state
   const [kyc, setKyc] = useState<KycData | null>(null);
   const [kycLoading, setKycLoading] = useState(true);
 
-  // Dashboard state
   const [cards, setCards] = useState<VirtualCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -557,7 +556,6 @@ export default function DashboardPage() {
   const [showReload, setShowReload] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // ── Fetch KYC status ─────────────────────────────────────────
   const fetchKyc = useCallback(async () => {
     if (!firebaseUser) return;
     try {
@@ -565,12 +563,9 @@ export default function DashboardPage() {
       const res = await fetch('/api/kyc/status', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) setKyc(data.data);
-    } finally {
-      setKycLoading(false);
-    }
+    } finally { setKycLoading(false); }
   }, [firebaseUser, getToken]);
 
-  // ── Fetch dashboard data ──────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!firebaseUser) return;
     try {
@@ -581,25 +576,28 @@ export default function DashboardPage() {
       ]);
       const cardData = await cardRes.json();
       const notifData = await notifRes.json();
-      if (cardData.success) { setCards(cardData.data.cards); setTransactions(cardData.data.transactions); }
+      if (cardData.success) {
+        setCards(cardData.data.cards);
+        setTransactions(cardData.data.transactions);
+        // Auto-select first active card
+        if (cardData.data.cards.length > 0 && !selectedCardId) {
+          const first = cardData.data.cards.find((c: VirtualCard) => c.status === 'active') || cardData.data.cards[0];
+          setSelectedCardId(first.id);
+        }
+      }
       if (notifData.success) setNotifications(notifData.data);
     } finally { setLoading(false); }
-  }, [firebaseUser, getToken]);
+  }, [firebaseUser, getToken, selectedCardId]);
 
   useEffect(() => {
     if (!authLoading && !firebaseUser) { router.push('/auth/login'); return; }
-    if (firebaseUser) {
-      fetchKyc();
-      fetchData();
-    }
+    if (firebaseUser) { fetchKyc(); fetchData(); }
   }, [firebaseUser, authLoading, router, fetchKyc, fetchData]);
 
-  // Admin redirect
   useEffect(() => {
     if (appUser?.role === 'admin') router.push('/admin');
   }, [appUser, router]);
 
-  // ── Mark notification as read (optimistic) ────────────────────
   const markAsRead = useCallback(async (notifId: string) => {
     const notif = notifications.find(n => n.id === notifId);
     if (!notif || notif.read) return;
@@ -616,29 +614,24 @@ export default function DashboardPage() {
     }
   }, [notifications, getToken]);
 
-  // ── Mark all as read ──────────────────────────────────────────
   const markAllAsRead = useCallback(async () => {
     const unreadNotifs = notifications.filter(n => !n.read);
     if (unreadNotifs.length === 0) return;
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     try {
       const token = await getToken();
-      await Promise.all(
-        unreadNotifs.map(n =>
-          fetch('/api/notifications', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ notificationId: n.id }),
-          })
-        )
-      );
-    } catch {
-      setNotifications(prev =>
-        prev.map(n => {
-          const wasUnread = unreadNotifs.find(u => u.id === n.id);
-          return wasUnread ? { ...n, read: false } : n;
+      await Promise.all(unreadNotifs.map(n =>
+        fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ notificationId: n.id }),
         })
-      );
+      ));
+    } catch {
+      setNotifications(prev => prev.map(n => {
+        const wasUnread = unreadNotifs.find(u => u.id === n.id);
+        return wasUnread ? { ...n, read: false } : n;
+      }));
     }
   }, [notifications, getToken]);
 
@@ -655,10 +648,12 @@ export default function DashboardPage() {
     } finally { setFreezeLoading(false); }
   };
 
-  const activeCard = cards.find(c => c.status === 'active' || c.status === 'frozen');
+  // Derived
+  const activeCards = cards.filter(c => c.status === 'active' || c.status === 'frozen');
+  const selectedCard = selectedCardId ? cards.find(c => c.id === selectedCardId) : activeCards[0];
+  const hasCards = activeCards.length > 0;
   const unread = notifications.filter(n => !n.read).length;
 
-  // ── Loading screen ────────────────────────────────────────────
   if (authLoading || kycLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-bg">
@@ -672,70 +667,90 @@ export default function DashboardPage() {
     );
   }
 
-  // ── KYC Gate: block dashboard if not approved ─────────────────
-  // Allow access only when status === 'approved'
-  const kycApproved = kyc?.status === 'approved';
-
-  if (!kycApproved) {
+  if (kyc?.status !== 'approved') {
     return <KycGate kyc={kyc} onVerify={() => router.push('/kyc')} />;
   }
 
-  // ── Dashboard content (KYC approved) ─────────────────────────
+  // ── Tabs ────────────────────────────────────────────────────────
   const renderContent = () => {
     switch (tab) {
+
+      // ── HOME ──────────────────────────────────────────────────
       case 'home': return (
         <div className="space-y-6 animate-fade-in">
-          {/* KYC approved badge */}
-          <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium">
-            <CheckCircle size={12} className="text-brand-green" />
-            Identité vérifiée
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium mb-3">
+                <CheckCircle size={12} className="text-brand-green" /> Identité vérifiée
+              </div>
+              <h1 className="text-2xl font-bold">Bonjour, {appUser?.displayName?.split(' ')[0]} 👋</h1>
+              <p className="text-ink-secondary">Bienvenue sur votre espace LFD WEB CARD</p>
+            </div>
           </div>
 
-          <div>
-            <h1 className="text-2xl font-bold">Bonjour, {appUser?.displayName?.split(' ')[0]} 👋</h1>
-            <p className="text-ink-secondary">Bienvenue sur votre espace LFD WEB CARD</p>
-          </div>
+          {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="card p-4">
               <div className="text-ink-secondary text-xs mb-1">Transactions</div>
               <div className="text-2xl font-bold">{transactions.filter(t => t.status === 'success').length}</div>
             </div>
             <div className="card p-4">
-              <div className="text-ink-secondary text-xs mb-1">Statut carte</div>
-              <div className="text-sm font-bold mt-1">
-                {activeCard
-                  ? <span className={activeCard.status === 'active' ? 'text-brand-green' : 'text-blue-500'}>{activeCard.status === 'active' ? '● Active' : '❄ Gelée'}</span>
-                  : <span className="text-ink-muted">Aucune carte</span>}
-              </div>
+              <div className="text-ink-secondary text-xs mb-1">Mes cartes</div>
+              <div className="text-2xl font-bold">{hasCards ? activeCards.length : 0}</div>
+              {hasCards && (
+                <div className={`text-xs font-semibold mt-1 ${selectedCard?.status === 'active' ? 'text-brand-green' : 'text-blue-500'}`}>
+                  {selectedCard?.status === 'active' ? '● Active' : '❄ Gelée'}
+                </div>
+              )}
             </div>
           </div>
-          {!activeCard && (
+
+          {/* No card → invite to buy */}
+          {!hasCards && (
             <div className="card p-6 border-2 border-dashed border-brand-orange/30 text-center">
               <div className="w-14 h-14 bg-brand-orange-light rounded-3xl flex items-center justify-center mx-auto mb-4">
                 <CreditCard size={24} className="text-brand-orange" />
               </div>
               <h3 className="font-bold text-lg mb-2">Pas encore de carte</h3>
-              <p className="text-ink-secondary text-sm mb-5">Obtenez votre carte Visa ou Mastercard virtuelle internationale pour payer partout dans le monde.</p>
-              <button onClick={() => setShowBuy(true)} className="btn-primary"><Plus size={16} />Acheter une carte — 5 000 FCFA</button>
+              <p className="text-ink-secondary text-sm mb-5">
+                Obtenez votre carte Visa ou Mastercard virtuelle internationale pour payer partout dans le monde.
+              </p>
+              <button onClick={() => setShowBuy(true)} className="btn-primary">
+                <Plus size={16} /> Acheter une carte — 5 000 FCFA
+              </button>
             </div>
           )}
-          {activeCard && (
+
+          {/* Has card(s) → quick actions */}
+          {hasCards && (
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setShowReload(true)} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
                 <div className="w-10 h-10 bg-brand-green-light rounded-2xl flex items-center justify-center"><TrendingUp size={18} className="text-brand-green" /></div>
                 <div><div className="font-medium text-sm">Recharger</div><div className="text-ink-muted text-xs">Mobile Money</div></div>
               </button>
+              <button onClick={() => setShowBuy(true)} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
+                <div className="w-10 h-10 bg-brand-orange-light rounded-2xl flex items-center justify-center"><Plus size={18} className="text-brand-orange" /></div>
+                <div><div className="font-medium text-sm">Nouvelle carte</div><div className="text-ink-muted text-xs">5 000 FCFA</div></div>
+              </button>
               <button onClick={fetchData} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
                 <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center"><RefreshCw size={18} className="text-blue-500" /></div>
                 <div><div className="font-medium text-sm">Actualiser</div><div className="text-ink-muted text-xs">Sync données</div></div>
               </button>
+              <button onClick={() => setTab('card')} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
+                <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center"><Layers size={18} className="text-purple-500" /></div>
+                <div><div className="font-medium text-sm">Mes cartes</div><div className="text-ink-muted text-xs">{activeCards.length} carte{activeCards.length > 1 ? 's' : ''}</div></div>
+              </button>
             </div>
           )}
+
+          {/* Recent transactions */}
           {transactions.slice(0, 3).length > 0 && (
             <div className="card p-5">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold">Dernières transactions</h3>
-                <button onClick={() => setTab('history')} className="text-brand-orange text-xs font-medium flex items-center gap-1">Voir tout <ChevronRight size={13} /></button>
+                <button onClick={() => setTab('history')} className="text-brand-orange text-xs font-medium flex items-center gap-1">
+                  Voir tout <ChevronRight size={13} />
+                </button>
               </div>
               {transactions.slice(0, 3).map(tx => <TxItem key={tx.id} tx={tx} />)}
             </div>
@@ -743,46 +758,112 @@ export default function DashboardPage() {
         </div>
       );
 
+      // ── CARDS ─────────────────────────────────────────────────
       case 'card': return (
         <div className="space-y-5 animate-fade-in">
-          <h2 className="text-xl font-bold">Ma carte</h2>
-          {activeCard ? (
-            <>
-              <CardDisplay card={activeCard} onFreeze={() => handleFreeze(activeCard)} loading={freezeLoading} />
-              <div className="card p-5">
-                <h3 className="font-semibold mb-4">Détails de la carte</h3>
-                <div className="space-y-3 text-sm">
-                  {[
-                    ['Type', `${activeCard.brand.charAt(0).toUpperCase() + activeCard.brand.slice(1)} Virtuelle`],
-                    ['Devise', activeCard.currency],
-                    ['Créée le', new Date(activeCard.createdAt).toLocaleDateString('fr-FR')],
-                    ['Statut', activeCard.status === 'active' ? '● Active' : '❄ Gelée'],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between">
-                      <span className="text-ink-secondary">{k}</span>
-                      <span className="font-medium">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setShowReload(true)} className="btn-primary py-3.5"><TrendingUp size={16} />Recharger</button>
-                <button onClick={() => handleFreeze(activeCard)} disabled={freezeLoading} className="btn-secondary py-3.5">
-                  {activeCard.status === 'frozen' ? <><Sun size={16} />Dégeler</> : <><Snowflake size={16} />Geler</>}
-                </button>
-              </div>
-            </>
-          ) : (
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Mes cartes</h2>
+            <button onClick={() => setShowBuy(true)}
+              className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
+              <Plus size={15} /> Nouvelle carte
+            </button>
+          </div>
+
+          {/* No cards */}
+          {!hasCards && (
             <div className="card p-8 text-center border-2 border-dashed border-brand-orange/30">
               <CreditCard size={40} className="text-brand-orange mx-auto mb-4" />
               <h3 className="font-bold text-lg mb-2">Aucune carte active</h3>
-              <p className="text-ink-secondary text-sm mb-5">Achetez votre première carte Visa ou Mastercard virtuelle internationale.</p>
-              <button onClick={() => setShowBuy(true)} className="btn-primary"><Plus size={16} />Acheter — 5 000 FCFA</button>
+              <p className="text-ink-secondary text-sm mb-5">
+                Achetez votre première carte Visa ou Mastercard virtuelle internationale.
+              </p>
+              <button onClick={() => setShowBuy(true)} className="btn-primary">
+                <Plus size={16} /> Acheter — 5 000 FCFA
+              </button>
             </div>
+          )}
+
+          {/* Card list + detail */}
+          {hasCards && (
+            <>
+              {/* Multiple cards → selector */}
+              {activeCards.length > 1 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-ink-secondary">Sélectionnez une carte</p>
+                  {activeCards.map(card => (
+                    <CardMini
+                      key={card.id}
+                      card={card}
+                      active={selectedCard?.id === card.id}
+                      onClick={() => setSelectedCardId(card.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Selected card display */}
+              {selectedCard && (
+                <>
+                  <CardDisplay
+                    card={selectedCard}
+                    onFreeze={() => handleFreeze(selectedCard)}
+                    loading={freezeLoading}
+                  />
+
+                  {/* Details */}
+                  <div className="card p-5">
+                    <h3 className="font-semibold mb-4">Détails de la carte</h3>
+                    <div className="space-y-3 text-sm">
+                      {[
+                        ['Type', `${selectedCard.brand.charAt(0).toUpperCase() + selectedCard.brand.slice(1)} Virtuelle`],
+                        ['Devise', selectedCard.currency],
+                        ['Créée le', new Date(selectedCard.createdAt).toLocaleDateString('fr-FR')],
+                        ['Statut', selectedCard.status === 'active' ? '● Active' : '❄ Gelée'],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="text-ink-secondary">{k}</span>
+                          <span className="font-medium">{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
+                      <TrendingUp size={16} /> Recharger
+                    </button>
+                    <button onClick={() => handleFreeze(selectedCard)} disabled={freezeLoading} className="btn-secondary py-3.5">
+                      {selectedCard.status === 'frozen'
+                        ? <><Sun size={16} /> Dégeler</>
+                        : <><Snowflake size={16} /> Geler</>}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Banner: commander une nouvelle carte */}
+              <div className="card p-5 border border-dashed border-brand-orange/40 bg-brand-orange-light/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 bg-brand-orange rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <Plus size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm">Commander une nouvelle carte</div>
+                    <div className="text-ink-secondary text-xs mt-0.5">Visa ou Mastercard · 5 000 FCFA</div>
+                  </div>
+                  <button onClick={() => setShowBuy(true)} className="btn-primary text-sm py-2 px-4 flex-shrink-0">
+                    Commander
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       );
 
+      // ── HISTORY ───────────────────────────────────────────────
       case 'history': return (
         <div className="space-y-5 animate-fade-in">
           <h2 className="text-xl font-bold">Historique des transactions</h2>
@@ -799,20 +880,18 @@ export default function DashboardPage() {
         </div>
       );
 
+      // ── NOTIFICATIONS ─────────────────────────────────────────
       case 'notifications': return (
         <div className="space-y-5 animate-fade-in">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Notifications</h2>
             {unread > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-xs font-medium text-brand-orange hover:text-brand-orange/70 transition-colors flex items-center gap-1"
-              >
+              <button onClick={markAllAsRead}
+                className="text-xs font-medium text-brand-orange hover:text-brand-orange/70 transition-colors flex items-center gap-1">
                 <CheckCircle size={13} /> Tout marquer comme lu
               </button>
             )}
           </div>
-
           {notifications.length === 0 ? (
             <div className="card p-8 text-center">
               <Bell size={36} className="text-ink-muted mx-auto mb-3" />
@@ -821,15 +900,8 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {notifications.map(n => (
-                <div
-                  key={n.id}
-                  onClick={() => markAsRead(n.id)}
-                  className={`card p-4 transition-all select-none ${
-                    !n.read
-                      ? 'border-l-4 border-brand-orange cursor-pointer hover:shadow-card-hover active:scale-[0.99]'
-                      : 'opacity-75'
-                  }`}
-                >
+                <div key={n.id} onClick={() => markAsRead(n.id)}
+                  className={`card p-4 transition-all select-none ${!n.read ? 'border-l-4 border-brand-orange cursor-pointer hover:shadow-card-hover active:scale-[0.99]' : 'opacity-75'}`}>
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${n.type === '3ds_required' ? 'bg-red-50' : 'bg-brand-orange-light'}`}>
                       {n.type === '3ds_required'
@@ -856,27 +928,35 @@ export default function DashboardPage() {
     <div className="bg-surface-bg">
       <Sidebar active={tab} onNav={setTab} onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} unread={unread} />
       <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unread} />
-      <MobileDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        active={tab}
-        onNav={setTab}
-        onLogout={logout}
-        userName={appUser?.displayName || 'Utilisateur'}
-        unread={unread}
-      />
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} active={tab} onNav={setTab}
+        onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} unread={unread} />
       <div className="main-with-sidebar">
         <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8">
           {loading ? (
             <div className="flex items-center justify-center py-20 text-ink-muted">
-              <Loader2 size={24} className="animate-spin mr-3" />Chargement...
+              <Loader2 size={24} className="animate-spin mr-3" /> Chargement...
             </div>
           ) : renderContent()}
         </main>
       </div>
       <BottomNav active={tab} onNav={setTab} unread={unread} />
-      {showBuy && <BuyModal onClose={() => setShowBuy(false)} country={appUser?.country || 'BJ'} getToken={getToken} />}
-      {showReload && activeCard && <ReloadModal card={activeCard} onClose={() => setShowReload(false)} country={appUser?.country || 'BJ'} getToken={getToken} />}
+
+      {showBuy && (
+        <BuyModal
+          onClose={() => setShowBuy(false)}
+          country={appUser?.country || 'BJ'}
+          getToken={getToken}
+          hasCards={hasCards}
+        />
+      )}
+      {showReload && selectedCard && (
+        <ReloadModal
+          card={selectedCard}
+          onClose={() => setShowReload(false)}
+          country={appUser?.country || 'BJ'}
+          getToken={getToken}
+        />
+      )}
     </div>
   );
 }
