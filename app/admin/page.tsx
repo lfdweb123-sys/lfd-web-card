@@ -1,11 +1,23 @@
+// app/admin/page.tsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, CreditCard, TrendingUp, Activity, LogOut, Shield, CheckCircle, Ban, UserCheck, RefreshCw, Search, Home, BarChart2, Bell } from 'lucide-react';
+import {
+  Users, CreditCard, TrendingUp, Activity, LogOut, Shield,
+  CheckCircle, Ban, UserCheck, Search, Home, BarChart2,
+  RefreshCw, ClipboardList
+} from 'lucide-react';
 
-interface AdminStats { totalUsers: number; totalCards: number; activeCards: number; totalTransactions: number; totalRevenue: number; recentTransactions: AdminTx[]; }
-interface AdminUser { id: string; email: string; displayName: string; role: string; status: string; country: string; createdAt: string; }
+interface AdminStats {
+  totalUsers: number; totalCards: number; activeCards: number;
+  totalTransactions: number; totalRevenue: number; recentTransactions: AdminTx[];
+}
+interface AdminUser {
+  id: string; email: string; displayName: string;
+  role: string; status: string; country: string; createdAt: string;
+}
 interface AdminTx { id: string; type: string; amount: number; status: string; createdAt: string; }
 
 function Logo() {
@@ -19,9 +31,11 @@ function Logo() {
   );
 }
 
-function Sidebar({ active, onNav, onLogout, email }: { active: string; onNav: (s: string) => void; onLogout: () => void; email: string }) {
+function Sidebar({ active, onNav, onLogout, email }: {
+  active: string; onNav: (s: string) => void; onLogout: () => void; email: string;
+}) {
   const items = [
-    { id: 'overview', label: 'Vue d\'ensemble', icon: <Home size={18} /> },
+    { id: 'overview', label: "Vue d'ensemble", icon: <Home size={18} /> },
     { id: 'users', label: 'Utilisateurs', icon: <Users size={18} /> },
     { id: 'transactions', label: 'Transactions', icon: <TrendingUp size={18} /> },
   ];
@@ -29,21 +43,26 @@ function Sidebar({ active, onNav, onLogout, email }: { active: string; onNav: (s
     <aside className="sidebar-fixed">
       <div className="px-5 py-5 border-b border-surface-border">
         <Logo />
-        <div className="mt-3 px-1">
-          <span className="badge-orange text-[11px]">Admin</span>
-        </div>
+        <div className="mt-3 px-1"><span className="badge-orange text-[11px]">Admin</span></div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left
+              ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
             {item.icon}<span>{item.label}</span>
           </button>
         ))}
+        {/* Lien KYC séparé */}
+        <Link href="/admin/kyc"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left text-ink-secondary hover:bg-surface-muted hover:text-ink-primary">
+          <ClipboardList size={18} /><span>Vérifications KYC</span>
+        </Link>
       </nav>
       <div className="px-5 py-4 border-t border-surface-border">
         <div className="text-xs text-ink-muted mb-3 truncate">{email}</div>
-        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+        <button onClick={onLogout}
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
           <LogOut size={16} />Déconnexion
         </button>
       </div>
@@ -54,13 +73,21 @@ function Sidebar({ active, onNav, onLogout, email }: { active: string; onNav: (s
 function BottomNav({ active, onNav }: { active: string; onNav: (s: string) => void }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-surface-border">
-      <div className="grid grid-cols-3 h-16">
-        {[['overview', 'Accueil', <Home size={20} />], ['users', 'Utilisateurs', <Users size={20} />], ['transactions', 'Transactions', <TrendingUp size={20} />]].map(([id, label, icon]) => (
-          <button key={id as string} onClick={() => onNav(id as string)} className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${active === id ? 'text-brand-orange' : 'text-ink-muted'}`}>
-            {icon as React.ReactNode}
-            <span className="text-[10px] font-medium">{label as string}</span>
+      <div className="grid grid-cols-4 h-16">
+        {([
+          ['overview', 'Accueil', <Home size={20} />],
+          ['users', 'Utilisateurs', <Users size={20} />],
+          ['transactions', 'Transactions', <TrendingUp size={20} />],
+        ] as const).map(([id, label, icon]) => (
+          <button key={id} onClick={() => onNav(id)}
+            className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${active === id ? 'text-brand-orange' : 'text-ink-muted'}`}>
+            {icon}<span className="text-[10px] font-medium">{label}</span>
           </button>
         ))}
+        <Link href="/admin/kyc"
+          className="flex flex-col items-center justify-center gap-0.5 text-ink-muted">
+          <ClipboardList size={20} /><span className="text-[10px] font-medium">KYC</span>
+        </Link>
       </div>
     </nav>
   );
@@ -82,19 +109,30 @@ export default function AdminPage() {
   const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
 
   const fetchAll = useCallback(async () => {
     if (!firebaseUser) return;
-    const token = await getToken();
-    const [s, u] = await Promise.all([
-      fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
-      fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
-    ]);
-    const sd = await s.json(); const ud = await u.json();
-    if (sd.success) setStats(sd.data);
-    if (ud.success) setUsers(ud.data);
-    setLoading(false);
-  }, [firebaseUser, getToken]);
+    setError('');
+    try {
+      // Force refresh du token pour avoir les claims à jour
+      const token = await firebaseUser.getIdToken(true);
+      const [s, u] = await Promise.all([
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const sd = await s.json();
+      const ud = await u.json();
+      if (sd.success) setStats(sd.data);
+      else setError(sd.error || 'Erreur stats');
+      if (ud.success) setUsers(ud.data);
+      else if (!sd.success) setError(ud.error || 'Erreur users');
+    } catch (e) {
+      setError('Erreur réseau');
+    } finally {
+      setLoading(false);
+    }
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -104,18 +142,29 @@ export default function AdminPage() {
 
   const userAction = async (userId: string, action: string) => {
     setActionLoading(userId + action);
-    const token = await getToken();
-    await fetch('/api/admin/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ userId, action }) });
-    setMsg('Action effectuée.'); await fetchAll(); setTimeout(() => setMsg(''), 3000);
+    const token = await firebaseUser!.getIdToken(true);
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId, action }),
+    });
+    const data = await res.json();
+    if (data.success) { setMsg('Action effectuée.'); await fetchAll(); setTimeout(() => setMsg(''), 3000); }
+    else setError(data.error || 'Erreur');
     setActionLoading(null);
   };
 
-  const filtered = users.filter(u => u.email?.toLowerCase().includes(search.toLowerCase()) || u.displayName?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter(u =>
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    u.displayName?.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-surface-bg">
       <div className="text-center">
-        <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse-soft"><Shield size={22} className="text-white" /></div>
+        <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse-soft">
+          <Shield size={22} className="text-white" />
+        </div>
         <p className="text-ink-secondary text-sm">Chargement admin...</p>
       </div>
     </div>
@@ -123,92 +172,144 @@ export default function AdminPage() {
 
   const renderContent = () => {
     switch (tab) {
-      case 'overview': return stats ? (
+      case 'overview': return (
         <div className="space-y-6 animate-fade-in">
-          <h1 className="text-2xl font-bold">Vue d'ensemble</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Vue d'ensemble</h1>
+            <button onClick={fetchAll} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center hover:bg-surface-border transition-colors">
+              <RefreshCw size={15} className="text-ink-secondary" />
+            </button>
+          </div>
+
           {msg && <div className="bg-brand-green-light border border-brand-green/20 text-green-700 rounded-2xl p-3.5 text-sm flex items-center gap-2"><CheckCircle size={15} />{msg}</div>}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Utilisateurs', value: stats.totalUsers, icon: <Users size={17} className="text-blue-500" />, bg: 'bg-blue-50' },
-              { label: 'Cartes actives', value: stats.activeCards, icon: <CreditCard size={17} className="text-brand-green" />, bg: 'bg-brand-green-light' },
-              { label: 'Transactions', value: stats.totalTransactions, icon: <Activity size={17} className="text-purple-500" />, bg: 'bg-purple-50' },
-              { label: 'Revenus FCFA', value: `${(stats.totalRevenue / 1000).toFixed(0)}k`, icon: <TrendingUp size={17} className="text-brand-orange" />, bg: 'bg-brand-orange-light' },
-            ].map(s => (
-              <div key={s.label} className="card p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-ink-secondary text-xs">{s.label}</span>
-                  <div className={`w-8 h-8 ${s.bg} rounded-xl flex items-center justify-center`}>{s.icon}</div>
-                </div>
-                <div className="text-2xl font-bold">{s.value}</div>
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-sm">{error}</div>}
+
+          {/* KYC shortcut card */}
+          <Link href="/admin/kyc" className="card p-4 flex items-center justify-between hover:border-brand-orange/40 transition-colors group">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-brand-orange-light rounded-2xl flex items-center justify-center">
+                <ClipboardList size={18} className="text-brand-orange" />
               </div>
-            ))}
-          </div>
-          <div className="card p-5">
-            <h3 className="font-semibold mb-4">Dernières transactions</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="text-ink-muted text-left">
-                  <th className="pb-3 font-medium">ID</th><th className="pb-3 font-medium">Type</th>
-                  <th className="pb-3 font-medium">Montant</th><th className="pb-3 font-medium">Statut</th><th className="pb-3 font-medium">Date</th>
-                </tr></thead>
-                <tbody>
-                  {stats.recentTransactions.map(tx => (
-                    <tr key={tx.id} className="border-t border-surface-border">
-                      <td className="py-3 font-mono text-xs text-ink-muted">{tx.id.slice(0, 8)}…</td>
-                      <td className="py-3">{tx.type === 'card_purchase' ? '🃏 Achat' : '💳 Rechargement'}</td>
-                      <td className="py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
-                      <td className="py-3"><TxBadge s={tx.status} /></td>
-                      <td className="py-3 text-ink-muted">{new Date(tx.createdAt).toLocaleDateString('fr-FR')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div>
+                <div className="font-semibold text-sm">Vérifications KYC</div>
+                <div className="text-xs text-ink-muted">Examiner les dossiers en attente</div>
+              </div>
             </div>
-          </div>
-          <div className="card p-5 border-l-4 border-yellow-400 bg-yellow-50">
-            <h4 className="font-semibold text-yellow-800 mb-2">Webhooks à configurer</h4>
-            <div className="text-xs font-mono text-yellow-700 space-y-1 bg-yellow-100 rounded-xl p-3">
-              <div>LFD Gateway : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/payment</div>
-              <div>Pagocards   : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/pagocards</div>
-            </div>
-          </div>
+            <span className="text-brand-orange text-sm font-medium group-hover:underline">Voir →</span>
+          </Link>
+
+          {stats && (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Utilisateurs', value: stats.totalUsers, icon: <Users size={17} className="text-blue-500" />, bg: 'bg-blue-50' },
+                  { label: 'Cartes actives', value: stats.activeCards, icon: <CreditCard size={17} className="text-brand-green" />, bg: 'bg-brand-green-light' },
+                  { label: 'Transactions', value: stats.totalTransactions, icon: <Activity size={17} className="text-purple-500" />, bg: 'bg-purple-50' },
+                  { label: 'Revenus FCFA', value: `${(stats.totalRevenue / 1000).toFixed(0)}k`, icon: <TrendingUp size={17} className="text-brand-orange" />, bg: 'bg-brand-orange-light' },
+                ].map(s => (
+                  <div key={s.label} className="card p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-ink-secondary text-xs">{s.label}</span>
+                      <div className={`w-8 h-8 ${s.bg} rounded-xl flex items-center justify-center`}>{s.icon}</div>
+                    </div>
+                    <div className="text-2xl font-bold">{s.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="card p-5">
+                <h3 className="font-semibold mb-4">Dernières transactions</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-ink-muted text-left">
+                      {['ID', 'Type', 'Montant', 'Statut', 'Date'].map(h => <th key={h} className="pb-3 font-medium">{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {stats.recentTransactions.length === 0 && (
+                        <tr><td colSpan={5} className="py-6 text-center text-ink-muted">Aucune transaction</td></tr>
+                      )}
+                      {stats.recentTransactions.map(tx => (
+                        <tr key={tx.id} className="border-t border-surface-border">
+                          <td className="py-3 font-mono text-xs text-ink-muted">{tx.id.slice(0, 8)}…</td>
+                          <td className="py-3">{tx.type === 'card_purchase' ? '🃏 Achat' : '💳 Rechargement'}</td>
+                          <td className="py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
+                          <td className="py-3"><TxBadge s={tx.status} /></td>
+                          <td className="py-3 text-ink-muted">{new Date(tx.createdAt).toLocaleDateString('fr-FR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="card p-5 border-l-4 border-yellow-400 bg-yellow-50">
+                <h4 className="font-semibold text-yellow-800 mb-2">Webhooks à configurer</h4>
+                <div className="text-xs font-mono text-yellow-700 space-y-1 bg-yellow-100 rounded-xl p-3">
+                  <div>LFD Gateway : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/payment</div>
+                  <div>Pagocards   : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/pagocards</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      ) : null;
+      );
 
       case 'users': return (
         <div className="space-y-5 animate-fade-in">
-          <h1 className="text-2xl font-bold">Utilisateurs</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Utilisateurs</h1>
+            <button onClick={fetchAll} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center hover:bg-surface-border transition-colors">
+              <RefreshCw size={15} className="text-ink-secondary" />
+            </button>
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-sm">{error}</div>}
+          {msg && <div className="bg-brand-green-light border border-brand-green/20 text-green-700 rounded-2xl p-3.5 text-sm flex items-center gap-2"><CheckCircle size={15} />{msg}</div>}
           <div className="relative">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-10" />
+            <input type="text" placeholder="Rechercher..." value={search}
+              onChange={e => setSearch(e.target.value)} className="input-field pl-10" />
           </div>
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
                   <tr className="text-ink-secondary text-left">
-                    {['Utilisateur', 'Pays', 'Rôle', 'Statut', 'Date', 'Actions'].map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                    {['Utilisateur', 'Pays', 'Rôle', 'Statut', 'Date', 'Actions'].map(h =>
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted">Aucun utilisateur trouvé</td></tr>
+                  )}
                   {filtered.map(u => (
                     <tr key={u.id} className="border-t border-surface-border hover:bg-surface-muted/50">
-                      <td className="px-4 py-3"><div className="font-medium">{u.displayName || '—'}</div><div className="text-ink-muted text-xs">{u.email}</div></td>
-                      <td className="px-4 py-3 text-ink-secondary">{u.country}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{u.displayName || '—'}</div>
+                        <div className="text-ink-muted text-xs">{u.email}</div>
+                      </td>
+                      <td className="px-4 py-3 text-ink-secondary">{u.country || '—'}</td>
                       <td className="px-4 py-3"><span className={u.role === 'admin' ? 'badge-orange' : 'badge-gray'}>{u.role}</span></td>
-                      <td className="px-4 py-3"><span className={u.status === 'active' ? 'badge-green' : 'badge-red'}>{u.status === 'active' ? '● Actif' : '⊘ Suspendu'}</span></td>
+                      <td className="px-4 py-3">
+                        <span className={u.status === 'active' ? 'badge-green' : 'badge-red'}>
+                          {u.status === 'active' ? '● Actif' : '⊘ Suspendu'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-ink-muted">{new Date(u.createdAt).toLocaleDateString('fr-FR')}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           {u.status === 'active'
-                            ? <button onClick={() => userAction(u.id, 'suspend')} disabled={!!actionLoading} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Suspendre"><Ban size={14} /></button>
-                            : <button onClick={() => userAction(u.id, 'activate')} disabled={!!actionLoading} className="p-1.5 text-brand-green hover:bg-brand-green-light rounded-lg" title="Réactiver"><UserCheck size={14} /></button>}
-                          {u.role !== 'admin' && <button onClick={() => userAction(u.id, 'make_admin')} disabled={!!actionLoading} className="p-1.5 text-brand-orange hover:bg-brand-orange-light rounded-lg" title="Admin"><Shield size={14} /></button>}
+                            ? <button onClick={() => userAction(u.id, 'suspend')} disabled={!!actionLoading}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Suspendre"><Ban size={14} /></button>
+                            : <button onClick={() => userAction(u.id, 'activate')} disabled={!!actionLoading}
+                                className="p-1.5 text-brand-green hover:bg-brand-green-light rounded-lg" title="Réactiver"><UserCheck size={14} /></button>}
+                          {u.role !== 'admin' &&
+                            <button onClick={() => userAction(u.id, 'make_admin')} disabled={!!actionLoading}
+                              className="p-1.5 text-brand-orange hover:bg-brand-orange-light rounded-lg" title="Promouvoir admin"><Shield size={14} /></button>}
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted">Aucun utilisateur trouvé</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -224,10 +325,14 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
                   <tr className="text-ink-secondary text-left">
-                    {['ID', 'Type', 'Montant', 'Statut', 'Date'].map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                    {['ID', 'Type', 'Montant', 'Statut', 'Date'].map(h =>
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
+                  {stats.recentTransactions.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted">Aucune transaction</td></tr>
+                  )}
                   {stats.recentTransactions.map(tx => (
                     <tr key={tx.id} className="border-t border-surface-border hover:bg-surface-muted/50">
                       <td className="px-4 py-3 font-mono text-xs text-ink-muted">{tx.id.slice(0, 12)}…</td>
@@ -250,7 +355,7 @@ export default function AdminPage() {
     <div className="bg-surface-bg">
       <Sidebar active={tab} onNav={setTab} onLogout={logout} email={appUser?.email || ''} />
       <div className="main-with-sidebar">
-        <main className="p-5 sm:p-8 pb-24 md:pb-8 max-w-5xl">{renderContent()}</main>
+        <main className="p-5 sm:p-8 pb-24 md:pb-8 max-w-8xl">{renderContent()}</main>
       </div>
       <BottomNav active={tab} onNav={setTab} />
     </div>

@@ -286,7 +286,7 @@ export default function AdminKycPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-5 py-8">
+      <main className="max-w-8xl mx-auto px-5 py-8">
         {msg && (
           <div className="bg-brand-green-light border border-brand-green/20 text-green-700 rounded-2xl p-4 text-sm mb-6 flex items-center gap-2">
             <CheckCircle size={15} />{msg}

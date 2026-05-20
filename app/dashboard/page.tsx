@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
 import {
@@ -8,7 +9,8 @@ import {
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
   Clock, CheckCircle, XCircle, Copy, Check,
   TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu,
-  Shield, ArrowRight, Loader2, Camera, Zap, Layers
+  Shield, ArrowRight, Loader2, Camera, Zap, Layers,
+  UserCircle
 } from 'lucide-react';
 
 const METHOD_LABELS: Record<string, string> = {
@@ -165,6 +167,10 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
             <div className="text-sm font-medium truncate">{userName}</div>
           </div>
         </div>
+        <Link href="/profile"
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-colors mb-1">
+          <UserCircle size={16} /> Mon profil
+        </Link>
         <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
           <LogOut size={16} /> Déconnexion
         </button>
@@ -205,6 +211,10 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
             </div>
             <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{userName}</div></div>
           </div>
+          <Link href="/profile" onClick={onClose}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-colors mb-1">
+            <UserCircle size={16} /> Mon profil
+          </Link>
           <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
             <LogOut size={16} /> Déconnexion
           </button>
@@ -317,7 +327,6 @@ function CardMini({ card, active, onClick }: { card: VirtualCard; active: boolea
       onClick={onClick}
       className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${active ? 'border-brand-orange bg-brand-orange-light/30' : 'border-surface-border bg-white hover:border-brand-orange/40'}`}
     >
-      {/* Mini card icon */}
       <div className={`w-12 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isFrozen ? 'bg-blue-500/20' : 'bg-gradient-to-br from-gray-800 to-gray-900'}`}>
         {isFrozen
           ? <Snowflake size={14} className="text-blue-400" />
@@ -372,7 +381,6 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
 
-        {/* Info banner si déjà une carte */}
         {hasCards && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-5 flex items-start gap-2 text-sm text-blue-700">
             <Layers size={15} className="flex-shrink-0 mt-0.5" />
@@ -579,7 +587,6 @@ export default function DashboardPage() {
       if (cardData.success) {
         setCards(cardData.data.cards);
         setTransactions(cardData.data.transactions);
-        // Auto-select first active card
         if (cardData.data.cards.length > 0 && !selectedCardId) {
           const first = cardData.data.cards.find((c: VirtualCard) => c.status === 'active') || cardData.data.cards[0];
           setSelectedCardId(first.id);
@@ -648,7 +655,6 @@ export default function DashboardPage() {
     } finally { setFreezeLoading(false); }
   };
 
-  // Derived
   const activeCards = cards.filter(c => c.status === 'active' || c.status === 'frozen');
   const selectedCard = selectedCardId ? cards.find(c => c.id === selectedCardId) : activeCards[0];
   const hasCards = activeCards.length > 0;
@@ -671,11 +677,9 @@ export default function DashboardPage() {
     return <KycGate kyc={kyc} onVerify={() => router.push('/kyc')} />;
   }
 
-  // ── Tabs ────────────────────────────────────────────────────────
   const renderContent = () => {
     switch (tab) {
 
-      // ── HOME ──────────────────────────────────────────────────
       case 'home': return (
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-start justify-between gap-4">
@@ -688,7 +692,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="card p-4">
               <div className="text-ink-secondary text-xs mb-1">Transactions</div>
@@ -705,7 +708,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* No card → invite to buy */}
           {!hasCards && (
             <div className="card p-6 border-2 border-dashed border-brand-orange/30 text-center">
               <div className="w-14 h-14 bg-brand-orange-light rounded-3xl flex items-center justify-center mx-auto mb-4">
@@ -721,7 +723,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Has card(s) → quick actions */}
           {hasCards && (
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setShowReload(true)} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
@@ -743,7 +744,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Recent transactions */}
           {transactions.slice(0, 3).length > 0 && (
             <div className="card p-5">
               <div className="flex justify-between items-center mb-3">
@@ -758,10 +758,8 @@ export default function DashboardPage() {
         </div>
       );
 
-      // ── CARDS ─────────────────────────────────────────────────
       case 'card': return (
         <div className="space-y-5 animate-fade-in">
-          {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Mes cartes</h2>
             <button onClick={() => setShowBuy(true)}
@@ -770,7 +768,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* No cards */}
           {!hasCards && (
             <div className="card p-8 text-center border-2 border-dashed border-brand-orange/30">
               <CreditCard size={40} className="text-brand-orange mx-auto mb-4" />
@@ -784,10 +781,8 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Card list + detail */}
           {hasCards && (
             <>
-              {/* Multiple cards → selector */}
               {activeCards.length > 1 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-ink-secondary">Sélectionnez une carte</p>
@@ -802,7 +797,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Selected card display */}
               {selectedCard && (
                 <>
                   <CardDisplay
@@ -810,8 +804,6 @@ export default function DashboardPage() {
                     onFreeze={() => handleFreeze(selectedCard)}
                     loading={freezeLoading}
                   />
-
-                  {/* Details */}
                   <div className="card p-5">
                     <h3 className="font-semibold mb-4">Détails de la carte</h3>
                     <div className="space-y-3 text-sm">
@@ -828,8 +820,6 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
                       <TrendingUp size={16} /> Recharger
@@ -843,7 +833,6 @@ export default function DashboardPage() {
                 </>
               )}
 
-              {/* Banner: commander une nouvelle carte */}
               <div className="card p-5 border border-dashed border-brand-orange/40 bg-brand-orange-light/20">
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 bg-brand-orange rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -863,7 +852,6 @@ export default function DashboardPage() {
         </div>
       );
 
-      // ── HISTORY ───────────────────────────────────────────────
       case 'history': return (
         <div className="space-y-5 animate-fade-in">
           <h2 className="text-xl font-bold">Historique des transactions</h2>
@@ -880,7 +868,6 @@ export default function DashboardPage() {
         </div>
       );
 
-      // ── NOTIFICATIONS ─────────────────────────────────────────
       case 'notifications': return (
         <div className="space-y-5 animate-fade-in">
           <div className="flex items-center justify-between">

@@ -48,10 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await sendPasswordResetEmail(auth, email);
   };
 
-  const getToken = async (): Promise<string> => {
-    if (!firebaseUser) throw new Error('Not authenticated');
-    return firebaseUser.getIdToken();
-  };
+const getToken = async (): Promise<string> => {
+  if (!firebaseUser) throw new Error('Not authenticated');
+  return firebaseUser.getIdToken(true); // true = force refresh
+};
 
   return (
     <AuthContext.Provider value={{ firebaseUser, appUser, loading, signIn, logout, resetPassword, getToken }}>

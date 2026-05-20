@@ -1,4 +1,5 @@
-import { adminAuth } from './firebase-admin';
+// lib/auth-middleware.ts
+import { adminAuth, adminDb } from './firebase-admin';
 import { NextRequest } from 'next/server';
 
 export interface AuthUser { uid: string; email: string; role: string; }
@@ -8,7 +9,15 @@ export async function verifyAuth(req: NextRequest): Promise<AuthUser | null> {
   if (!header?.startsWith('Bearer ')) return null;
   try {
     const decoded = await adminAuth.verifyIdToken(header.split(' ')[1]);
-    return { uid: decoded.uid, email: decoded.email || '', role: (decoded.role as string) || 'user' };
+    
+    // Le claim peut être absent si le token est ancien → fallback Firestore
+    let role = (decoded.role as string) || 'user';
+    if (role !== 'admin') {
+      const userDoc = await adminDb.collection('users').doc(decoded.uid).get();
+      if (userDoc.exists && userDoc.data()?.role === 'admin') role = 'admin';
+    }
+    
+    return { uid: decoded.uid, email: decoded.email || '', role };
   } catch { return null; }
 }
 

@@ -367,7 +367,7 @@ export default function ProfilePage() {
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onLogout={logout} userName={userName} />
 
       <div className="main-with-sidebar">
-        <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8 max-w-2xl">
+        <main className="p-5 sm:p-8 pt-20 md:pt-8 pb-24 md:pb-8 max-w-8xl">
 
           {/* ── Back link + Header ─────────────────────────────── */}
           <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink-primary text-sm mb-6 transition-colors">
