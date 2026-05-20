@@ -158,7 +158,7 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
           </button>
         ))}
       </nav>
-      <div className="px-5 py-4 border-t border-surface-border">
+<div className="px-5 py-4 border-t border-surface-border">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
