@@ -347,7 +347,7 @@ function Hero() {
                 <Link href="/dashboard" className="btn-primary text-base py-3.5">
                   <LayoutDashboard size={18} /> Mon tableau de bord <ArrowRight size={18} />
                 </Link>
-                <Link href="/dashboard/card" className="btn-secondary text-base py-3.5">
+                <Link href="/dashboard/" className="btn-secondary text-base py-3.5">
                   Voir ma carte
                 </Link>
               </>
@@ -618,7 +618,7 @@ function Pricing() {
               ))}
             </ul>
             {isLoggedIn ? (
-              <Link href="/dashboard/card/new" className="btn-primary w-full">
+              <Link href="/dashboard/" className="btn-primary w-full">
                 Commander ma carte
               </Link>
             ) : (
@@ -654,7 +654,7 @@ function Pricing() {
               ))}
             </ul>
             {isLoggedIn ? (
-              <Link href="/dashboard/topup" className="btn-secondary w-full">
+              <Link href="/dashboard/" className="btn-secondary w-full">
                 Recharger ma carte
               </Link>
             ) : (
