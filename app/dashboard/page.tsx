@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/date';
+import { getCardTheme, CARD_THEMES } from '@/lib/card-themes';
 import { Toast } from '@/components/Toast';
 import { NotificationPrompt } from '@/components/NotificationPrompt';
 import { listenForegroundMessages } from '@/lib/messaging';
@@ -271,8 +272,9 @@ function CardDisplay({ card, onFreeze, loading }: { card: VirtualCard; onFreeze:
     setTimeout(() => setCopied(false), 2000);
   };
   const cls = card.status === 'frozen' ? 'vcard-frozen' : 'vcard';
+  const themeStyle = card.status === 'frozen' ? undefined : { background: getCardTheme(card.theme).gradient };
   return (
-    <div className={cls + ' shadow-xl'}>
+    <div className={cls + ' shadow-xl'} style={themeStyle}>
       {card.status === 'frozen' && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-2 flex items-center gap-2">
@@ -326,7 +328,10 @@ function CardMini({ card, active, onClick }: { card: VirtualCard; active: boolea
       onClick={onClick}
       className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${active ? 'border-brand-orange bg-brand-orange-light/30' : 'border-surface-border bg-white hover:border-brand-orange/40'}`}
     >
-      <div className={`w-12 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isFrozen ? 'bg-blue-500/20' : 'bg-gradient-to-br from-gray-800 to-gray-900'}`}>
+      <div
+        className={`w-12 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isFrozen ? 'bg-blue-500/20' : ''}`}
+        style={isFrozen ? undefined : { background: getCardTheme(card.theme).gradient }}
+      >
         {isFrozen
           ? <Snowflake size={14} className="text-blue-400" />
           : <CreditCard size={14} className="text-white/80" />}
@@ -569,6 +574,7 @@ export default function DashboardPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [themeLoading, setThemeLoading] = useState<string | null>(null);
 
   const fetchKyc = useCallback(async () => {
     if (!firebaseUser) return;
@@ -678,6 +684,29 @@ export default function DashboardPage() {
       setToast({ message: 'Erreur réseau. Réessayez.', type: 'error' });
     } finally {
       setFreezeLoading(false);
+    }
+  };
+
+  const handleThemeChange = async (card: VirtualCard, theme: string) => {
+    setThemeLoading(theme);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/cards/theme', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cardId: card.id, theme }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setToast({ message: data.error || 'Impossible de changer le style de la carte.', type: 'error' });
+        return;
+      }
+      await fetchData();
+      setToast({ message: 'Style de carte mis à jour ✅', type: 'success' });
+    } catch {
+      setToast({ message: 'Erreur réseau. Réessayez.', type: 'error' });
+    } finally {
+      setThemeLoading(null);
     }
   };
 
@@ -858,6 +887,37 @@ export default function DashboardPage() {
                           <span className="font-medium">{v}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                  <div className="card p-5">
+                    <h3 className="font-semibold mb-4">Personnaliser ma carte</h3>
+                    <p className="text-ink-secondary text-xs mb-4">Choisissez le fond qui s'affiche sur votre carte virtuelle.</p>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+                      {CARD_THEMES.map(t => {
+                        const isActive = (selectedCard.theme || 'midnight') === t.id;
+                        const isLoadingThis = themeLoading === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => handleThemeChange(selectedCard, t.id)}
+                            disabled={!!themeLoading}
+                            title={t.name}
+                            className={`relative aspect-[3/2] rounded-xl transition-all ${isActive ? 'ring-2 ring-brand-orange ring-offset-2' : 'hover:scale-105'} disabled:opacity-60`}
+                            style={{ background: t.gradient }}
+                          >
+                            {isActive && (
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                <CheckCircle size={16} className="text-white drop-shadow" />
+                              </span>
+                            )}
+                            {isLoadingThis && (
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                                <Loader2 size={14} className="text-white animate-spin" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">

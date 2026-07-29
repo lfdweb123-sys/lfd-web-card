@@ -29,6 +29,7 @@ export interface VirtualCard {
   balance: number;
   status: CardStatus;
   createdAt: string;
+  theme?: string;
 }
 
 export interface Transaction {
