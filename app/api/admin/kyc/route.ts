@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
+import { sendPushToUser } from '@/lib/push';
 import { z } from 'zod';
 
 // GET - liste toutes les vérifications KYC
@@ -77,16 +78,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Notification pour l'utilisateur
+    const kycTitle = action === 'approve' ? '✅ Identité vérifiée' : '❌ Vérification refusée';
+    const kycMessage = action === 'approve'
+      ? 'Votre identité a été vérifiée avec succès. Vous pouvez maintenant obtenir votre carte.'
+      : `Votre vérification a été refusée. Raison : ${reason}`;
     await adminDb.collection('notifications').add({
       userId,
       type: action === 'approve' ? 'kyc_approved' : 'kyc_rejected',
-      title: action === 'approve' ? '✅ Identité vérifiée' : '❌ Vérification refusée',
-      message: action === 'approve'
-        ? 'Votre identité a été vérifiée avec succès. Vous pouvez maintenant obtenir votre carte.'
-        : `Votre vérification a été refusée. Raison : ${reason}`,
+      title: kycTitle,
+      message: kycMessage,
       read: false,
       createdAt: new Date().toISOString(),
     });
+    await sendPushToUser(userId, { title: kycTitle, body: kycMessage, data: { url: action === 'approve' ? '/dashboard' : '/kyc' } });
 
     // Log admin
     await adminDb.collection('logs').add({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
 import { createCard, fundCard, getCard, getMastercardSensitive, type CardBrand } from '@/lib/pagocards';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
+import { sendPushToUser } from '@/lib/push';
 
 const OK = () => NextResponse.json({ received: true });
 
@@ -48,14 +49,17 @@ export async function POST(req: NextRequest) {
 
   if (isFailed) {
     await txDoc.ref.update({ status: 'failed', completedAt: new Date().toISOString() });
+    const failTitle = 'Paiement échoué ❌';
+    const failMessage = `Votre paiement de ${(tx.total ?? tx.amount)?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`;
     await adminDb.collection('notifications').add({
       userId: tx.userId,
       type: 'payment_failed',
-      title: 'Paiement échoué ❌',
-      message: `Votre paiement de ${(tx.total ?? tx.amount)?.toLocaleString()} FCFA n'a pas abouti. Veuillez réessayer.`,
+      title: failTitle,
+      message: failMessage,
       read: false,
       createdAt: new Date().toISOString(),
     });
+    await sendPushToUser(tx.userId, { title: failTitle, body: failMessage, data: { url: '/dashboard' } });
 
     // Email échec si c'est un rechargement
     if (tx.type === 'card_reload' && tx.cardId) {
@@ -174,6 +178,11 @@ async function handlePurchase(
     message: `Votre carte virtuelle ${brand === 'visa' ? 'Visa' : 'Mastercard'} *${last4} a été créée avec succès.`,
     read: false, createdAt: new Date().toISOString(),
   });
+  await sendPushToUser(tx.userId, {
+    title: 'Votre carte est prête ! 🎉',
+    body: `Votre carte virtuelle ${brand === 'visa' ? 'Visa' : 'Mastercard'} *${last4} a été créée avec succès.`,
+    data: { url: '/dashboard' },
+  });
 
   await adminDb.collection('logs').add({
     type: 'card_created', userId: tx.userId, cardId: cardRef.id, brand,
@@ -238,12 +247,15 @@ async function handleReload(
   });
 
   // Notif in-app
+  const reloadTitle = 'Carte rechargée avec succès ✅';
+  const reloadMessage = `${tx.amount.toLocaleString()} FCFA (~$${amountUSD}) ont été ajoutés à votre carte *${card.last4}.`;
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: tx.cardId, type: 'card_reloaded',
-    title: 'Carte rechargée avec succès ✅',
-    message: `${tx.amount.toLocaleString()} FCFA (~$${amountUSD}) ont été ajoutés à votre carte *${card.last4}.`,
+    title: reloadTitle,
+    message: reloadMessage,
     read: false, createdAt: new Date().toISOString(),
   });
+  await sendPushToUser(tx.userId, { title: reloadTitle, body: reloadMessage, data: { url: '/dashboard' } });
 
   // Email succès rechargement
   const userDoc = await adminDb.collection('users').doc(tx.userId as string).get();

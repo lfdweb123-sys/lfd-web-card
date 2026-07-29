@@ -6,6 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/date';
 import { Toast } from '@/components/Toast';
+import { NotificationPrompt } from '@/components/NotificationPrompt';
+import { listenForegroundMessages } from '@/lib/messaging';
+import { Logo as LogoComponent } from '@/components/Logo';
 import {
   CreditCard, LogOut, Plus, RefreshCw, Eye, EyeOff,
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
@@ -121,14 +124,7 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
 
 // ── Logo ─────────────────────────────────────────────────────────
 function Logo() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-brand-orange rounded-xl flex items-center justify-center flex-shrink-0">
-        <CreditCard size={15} className="text-white" />
-      </div>
-      <span className="font-semibold text-sm tracking-wide">LFD WEB CARD</span>
-    </div>
-  );
+  return <LogoComponent />;
 }
 
 // ── Nav items ─────────────────────────────────────────────────────
@@ -614,6 +610,15 @@ export default function DashboardPage() {
     if (appUser?.role === 'admin') router.push('/admin');
   }, [appUser, router]);
 
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const unsubscribe = listenForegroundMessages((title, body) => {
+      setToast({ message: `${title} — ${body}`, type: 'success' });
+      fetchData();
+    });
+    return unsubscribe;
+  }, [firebaseUser, fetchData]);
+
   const markAsRead = useCallback(async (notifId: string) => {
     const notif = notifications.find(n => n.id === notifId);
     if (!notif || notif.read) return;
@@ -714,6 +719,8 @@ export default function DashboardPage() {
 
       case 'home': return (
         <div className="space-y-6 animate-fade-in">
+          <NotificationPrompt getToken={getToken} />
+
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium mb-3">

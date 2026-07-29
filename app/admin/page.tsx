@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatDateTime } from '@/lib/date';
+import { Logo as LogoComponent } from '@/components/Logo';
 import {
   Users, CreditCard, TrendingUp, Activity, LogOut, Shield,
   CheckCircle, Ban, UserCheck, Search, Home,
@@ -21,14 +22,7 @@ interface AdminUser {
 interface AdminTx { id: string; type: string; amount: number; status: string; createdAt: string; }
 
 function Logo() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-brand-orange rounded-xl flex items-center justify-center flex-shrink-0">
-        <Shield size={15} className="text-white" />
-      </div>
-      <span className="font-semibold text-sm tracking-wide">LFD WEB CARD</span>
-    </div>
-  );
+  return <LogoComponent />;
 }
 
 const NAV_ITEMS = [

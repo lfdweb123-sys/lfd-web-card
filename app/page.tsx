@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { FadeIn, Stagger, StaggerItem } from '@/components/FadeIn';
+import { Logo as LogoComponent } from '@/components/Logo';
 import {
   CreditCard, Globe, Shield, Zap, ArrowRight, CheckCircle, Star,
   Menu, X, ChevronDown, Smartphone, Lock, TrendingUp, Users,
@@ -15,14 +16,7 @@ import {
    Logo
 ───────────────────────────────────────────── */
 function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-brand-orange rounded-xl flex items-center justify-center flex-shrink-0">
-        <CreditCard size={16} className="text-white" />
-      </div>
-      <span className="font-semibold text-base tracking-wide">LFD WEB CARD</span>
-    </Link>
-  );
+  return <LogoComponent />;
 }
 
 /* ─────────────────────────────────────────────

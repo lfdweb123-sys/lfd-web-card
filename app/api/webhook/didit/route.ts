@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
+import { sendPushToUser } from '@/lib/push';
 
 const OK = () => NextResponse.json({ message: 'Webhook event dispatched' });
 const WEBHOOK_SECRET = () => process.env.DIDIT_WEBHOOK_SECRET!;
@@ -123,6 +124,11 @@ export async function POST(req: NextRequest) {
       message: 'Votre identité a été vérifiée avec succès. Vous pouvez maintenant obtenir votre carte.',
       read: false, createdAt: new Date().toISOString(),
     });
+    await sendPushToUser(userId, {
+      title: '✅ Identité vérifiée',
+      body: 'Votre identité a été vérifiée avec succès. Vous pouvez maintenant obtenir votre carte.',
+      data: { url: '/dashboard' },
+    });
 
   } else if (status === 'Declined') {
     await adminDb.collection('kyc').doc(userId).set({
@@ -139,6 +145,11 @@ export async function POST(req: NextRequest) {
       title: '❌ Vérification refusée',
       message: 'Votre vérification automatique n\'a pas abouti. Essayez la vérification manuelle.',
       read: false, createdAt: new Date().toISOString(),
+    });
+    await sendPushToUser(userId, {
+      title: '❌ Vérification refusée',
+      body: "Votre vérification automatique n'a pas abouti. Essayez la vérification manuelle.",
+      data: { url: '/kyc' },
     });
 
   } else if (status === 'In Review') {

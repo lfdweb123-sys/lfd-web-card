@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { sendPushToUser } from '@/lib/push';
 
 const OK = () => NextResponse.json({ received: true });
 
@@ -17,12 +18,13 @@ export async function POST(req: NextRequest) {
 
   if (eventName === 'cardTokenization.deliverActivationCode') {
     const p = payload as Record<string, string>;
+    const walletName = p.digitalWalletName === 'googlePay' ? 'Google Pay' : 'Apple Pay';
     await adminDb.collection('notifications').add({
       userId: card?.userId || null,
       cardId: cardDoc?.id || null,
       pagocardsCardId: cardId,
       type: 'wallet_activation',
-      title: `Code ${p.digitalWalletName === 'googlePay' ? 'Google Pay' : 'Apple Pay'}`,
+      title: `Code ${walletName}`,
       message: `Votre code d'activation : ${p.activationCode}`,
       activationCode: p.activationCode,
       digitalWalletName: p.digitalWalletName,
@@ -31,16 +33,24 @@ export async function POST(req: NextRequest) {
       read: false,
       createdAt: new Date().toISOString(),
     });
+    if (card?.userId) {
+      await sendPushToUser(card.userId as string, {
+        title: `🔐 Code ${walletName}`,
+        body: `Votre code d'activation : ${p.activationCode}`,
+        data: { url: '/dashboard' },
+      });
+    }
 
   } else if (eventName === 'cardAuthentication.created') {
     const p = payload as Record<string, string>;
+    const securityMessage = `${p.merchantName} demande ${p.merchantAmount} ${p.merchantCurrency} — Validez depuis votre espace.`;
     await adminDb.collection('notifications').add({
       userId: card?.userId || null,
       cardId: cardDoc?.id || null,
       pagocardsCardId: cardId,
       type: '3ds_required',
       title: 'Validation 3DS requise',
-      message: `${p.merchantName} demande ${p.merchantAmount} ${p.merchantCurrency} — Validez depuis votre espace.`,
+      message: securityMessage,
       merchantName: p.merchantName,
       merchantAmount: p.merchantAmount,
       merchantCurrency: p.merchantCurrency,
@@ -52,6 +62,13 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     });
     if (cardDoc) await cardDoc.ref.update({ pendingAction: '3ds' });
+    if (card?.userId) {
+      await sendPushToUser(card.userId as string, {
+        title: '🔐 Alerte sécurité — Validation requise',
+        body: securityMessage,
+        data: { url: '/dashboard' },
+      });
+    }
   }
 
   await adminDb.collection('logs').add({

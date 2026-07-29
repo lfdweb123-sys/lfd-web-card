@@ -8,6 +8,7 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { AppUser } from '@/types';
+import { Logo as LogoComponent } from '@/components/Logo';
 import {
   CreditCard, ArrowLeft, User, Mail, Phone, Globe,
   Lock, Eye, EyeOff, CheckCircle, XCircle, Clock,
@@ -55,14 +56,7 @@ interface KycData {
 
 // ── Logo ──────────────────────────────────────────────────────────
 function Logo() {
-  return (
-    <Link href="/dashboard" className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-brand-orange rounded-xl flex items-center justify-center flex-shrink-0">
-        <CreditCard size={15} className="text-white" />
-      </div>
-      <span className="font-semibold text-sm tracking-wide">LFD WEB CARD</span>
-    </Link>
-  );
+  return <LogoComponent />;
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────

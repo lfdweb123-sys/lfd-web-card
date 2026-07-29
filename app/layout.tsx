@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/hooks/useAuth';
+import { PwaRegister } from '@/components/PwaRegister';
 
 export const metadata: Metadata = {
   // ── Basics ──────────────────────────────────────────────────────
@@ -52,21 +53,33 @@ export const metadata: Metadata = {
     title: 'LFD WEB CARD — Carte virtuelle internationale',
     description:
       "Obtenez votre carte virtuelle Visa ou Mastercard en quelques minutes. Payez partout dans le monde depuis l'Afrique.",
+    images: [{ url: '/logo-horizontal.png', width: 1536, height: 1024, alt: 'LFD WEB CARD' }],
   },
 
   // ── Twitter / X ─────────────────────────────────────────────────
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'LFD WEB CARD — Carte virtuelle internationale',
     description:
       "Obtenez votre carte virtuelle Visa ou Mastercard en quelques minutes depuis l'Afrique.",
+    images: ['/logo-horizontal.png'],
   },
 
   // ── Icons ────────────────────────────────────────────────────────
   icons: {
-    icon: { url: '/favicon.svg', type: 'image/svg+xml' },
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/icon-180.png', sizes: '180x180', type: 'image/png' }],
     shortcut: '/favicon.svg',
   },
+
+  // ── PWA ────────────────────────────────────────────────────────────
+  manifest: '/manifest.json',
 
   // ── Web app ──────────────────────────────────────────────────────
   applicationName: 'LFD WEB CARD',
@@ -91,6 +104,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
+        <PwaRegister />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
