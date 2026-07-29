@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDate } from '@/lib/date';
 import {
   Shield, CheckCircle, Clock, XCircle, ArrowRight,
   Upload, Camera, CreditCard, Zap, AlertCircle,
@@ -142,7 +143,7 @@ function StatusBanner({ kyc }: { kyc: KycData }) {
           </p>
           {kyc.method === 'manual' && kyc.submittedAt && (
             <p className="text-yellow-600 text-xs mt-1.5">
-              Soumis le {new Date(kyc.submittedAt).toLocaleDateString('fr-FR')}
+              Soumis le {formatDate(kyc.submittedAt)}
             </p>
           )}
         </div>

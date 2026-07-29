@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDate, formatDateTime } from '@/lib/date';
 import {
   Shield, CheckCircle, XCircle, Clock, Eye, X,
   User, Search, RefreshCw, ChevronLeft, AlertCircle,
@@ -220,7 +221,7 @@ function ReviewModal({ entry, onClose, onAction, loading }: {
             </div>
             <div className="bg-surface-muted rounded-2xl p-3">
               <div className="text-ink-muted text-xs mb-1">Soumis le</div>
-              <div className="font-medium text-xs">{new Date(entry.submittedAt || entry.updatedAt).toLocaleString('fr-FR')}</div>
+              <div className="font-medium text-xs">{formatDateTime(entry.submittedAt || entry.updatedAt)}</div>
             </div>
             {entry.diditSessionId && (
               <div className="bg-surface-muted rounded-2xl p-3">
@@ -470,7 +471,7 @@ export default function AdminKycPage() {
                         <td className="px-4 py-3"><MethodBadge method={e.method} /></td>
                         <td className="px-4 py-3"><StatusBadge status={e.status} /></td>
                         <td className="px-4 py-3 text-ink-muted text-xs">
-                          {new Date(e.submittedAt || e.updatedAt).toLocaleDateString('fr-FR')}
+                          {formatDate(e.submittedAt || e.updatedAt)}
                         </td>
                         <td className="px-4 py-3">
                           <button onClick={() => setSelected(e)}

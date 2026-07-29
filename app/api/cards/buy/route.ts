@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, rateLimit } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { generatePaymentLink } from '@/lib/payment-gateway';
+import { toSafeDate } from '@/lib/date';
 
 const CARD_PRICE = Number(process.env.CARD_CREATION_PRICE) || 5000;
 const PURCHASE_FEE_RATE = 0.05; // frais mobile money 5% sur chaque achat de carte
@@ -22,12 +23,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pays requis.' }, { status: 400 });
     }
 
-    const existing = await adminDb.collection('cards')
+    // On autorise plusieurs cartes actives par utilisateur (fonctionnalité prévue côté UI).
+    // On bloque uniquement les doubles-clics : une transaction d'achat encore "pending"
+    // datant de moins de 10 minutes.
+    const pendingTxSnap = await adminDb.collection('transactions')
       .where('userId', '==', user.uid)
-      .where('status', 'in', ['active', 'pending', 'frozen'])
+      .where('type', '==', 'card_purchase')
+      .where('status', '==', 'pending')
+      .orderBy('createdAt', 'desc')
       .limit(1).get();
-    if (!existing.empty)
-      return NextResponse.json({ success: false, error: 'Vous avez déjà une carte active.' }, { status: 400 });
+    if (!pendingTxSnap.empty) {
+      const last = pendingTxSnap.docs[0].data();
+      const lastDate = toSafeDate(last.createdAt);
+      const ageMs = lastDate ? Date.now() - lastDate.getTime() : Infinity;
+      if (ageMs < 10 * 60 * 1000) {
+        return NextResponse.json({ success: false, error: 'Un achat de carte est déjà en cours. Terminez le paiement ou patientez quelques minutes.' }, { status: 400 });
+      }
+    }
 
     // ✅ Séparation prix de la carte / frais mobile money (5%)
     const fee = Math.round(CARD_PRICE * PURCHASE_FEE_RATE);

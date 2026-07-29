@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDate, formatDateTime } from '@/lib/date';
 import {
   Users, CreditCard, TrendingUp, Activity, LogOut, Shield,
   CheckCircle, Ban, UserCheck, Search, Home,
@@ -291,7 +292,7 @@ export default function AdminPage() {
                           <td className="py-3">{tx.type === 'card_purchase' ? '🃏 Achat' : '💳 Rechargement'}</td>
                           <td className="py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
                           <td className="py-3"><TxBadge s={tx.status} /></td>
-                          <td className="py-3 text-ink-muted">{new Date(tx.createdAt).toLocaleDateString('fr-FR')}</td>
+                          <td className="py-3 text-ink-muted">{formatDate(tx.createdAt)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -352,7 +353,7 @@ export default function AdminPage() {
                           {u.status === 'active' ? '● Actif' : '⊘ Suspendu'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-ink-muted">{new Date(u.createdAt).toLocaleDateString('fr-FR')}</td>
+                      <td className="px-4 py-3 text-ink-muted">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           {u.status === 'active'
@@ -396,7 +397,7 @@ export default function AdminPage() {
                       <td className="px-4 py-3">{tx.type === 'card_purchase' ? '🃏 Achat carte' : '💳 Rechargement'}</td>
                       <td className="px-4 py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
                       <td className="px-4 py-3"><TxBadge s={tx.status} /></td>
-                      <td className="px-4 py-3 text-ink-muted">{new Date(tx.createdAt).toLocaleString('fr-FR')}</td>
+                      <td className="px-4 py-3 text-ink-muted">{formatDateTime(tx.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
+import { formatDate, formatDateTime } from '@/lib/date';
+import { Toast } from '@/components/Toast';
 import {
   CreditCard, LogOut, Plus, RefreshCw, Eye, EyeOff,
   Snowflake, Sun, ArrowUpRight, ArrowDownLeft,
@@ -60,7 +62,7 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
             </p>
             {kyc?.submittedAt && (
               <p className="text-ink-muted text-center text-xs mb-8">
-                Soumis le {new Date(kyc.submittedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Soumis le {formatDate(kyc.submittedAt)}
               </p>
             )}
             <div className="flex justify-center gap-2 mb-8">
@@ -539,7 +541,7 @@ function TxItem({ tx }: { tx: Transaction }) {
               : tx.status === 'failed' ? <XCircle size={12} className="text-red-500" />
               : <Clock size={12} className="text-yellow-500" />}
             {tx.status === 'success' ? 'Confirmé' : tx.status === 'failed' ? 'Échoué' : 'En attente'}
-            {' · '}{new Date(tx.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            {' · '}{formatDate(tx.createdAt, { day: 'numeric', month: 'short' })}
           </div>
         </div>
       </div>
@@ -568,6 +570,8 @@ export default function DashboardPage() {
   const [showBuy, setShowBuy] = useState(false);
   const [showReload, setShowReload] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchKyc = useCallback(async () => {
     if (!firebaseUser) return;
@@ -649,15 +653,38 @@ export default function DashboardPage() {
 
   const handleFreeze = async (card: VirtualCard) => {
     setFreezeLoading(true);
+    const willFreeze = card.status !== 'frozen';
     try {
       const token = await getToken();
-      await fetch('/api/cards/freeze', {
+      const res = await fetch('/api/cards/freeze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cardId: card.id, action: card.status === 'frozen' ? 'unfreeze' : 'freeze' }),
+        body: JSON.stringify({ cardId: card.id, action: willFreeze ? 'freeze' : 'unfreeze' }),
       });
+      const data = await res.json();
+      if (!data.success) {
+        setToast({ message: data.error || "Impossible de modifier l'état de la carte.", type: 'error' });
+        return;
+      }
       await fetchData();
-    } finally { setFreezeLoading(false); }
+      setToast({ message: willFreeze ? 'Carte gelée avec succès ❄' : 'Carte dégelée avec succès ☀', type: 'success' });
+    } catch {
+      setToast({ message: 'Erreur réseau. Réessayez.', type: 'error' });
+    } finally {
+      setFreezeLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchData(), fetchKyc()]);
+      setToast({ message: 'Données synchronisées ✅', type: 'success' });
+    } catch {
+      setToast({ message: 'Échec de la synchronisation. Réessayez.', type: 'error' });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const activeCards = cards.filter(c => c.status === 'active' || c.status === 'frozen');
@@ -738,9 +765,9 @@ export default function DashboardPage() {
                 <div className="w-10 h-10 bg-brand-orange-light rounded-2xl flex items-center justify-center"><Plus size={18} className="text-brand-orange" /></div>
                 <div><div className="font-medium text-sm">Nouvelle carte</div><div className="text-ink-muted text-xs">5 000 FCFA</div></div>
               </button>
-              <button onClick={fetchData} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
-                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center"><RefreshCw size={18} className="text-blue-500" /></div>
-                <div><div className="font-medium text-sm">Actualiser</div><div className="text-ink-muted text-xs">Sync données</div></div>
+              <button onClick={handleRefresh} disabled={refreshing} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer disabled:opacity-60">
+                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center"><RefreshCw size={18} className={`text-blue-500 ${refreshing ? 'animate-spin' : ''}`} /></div>
+                <div><div className="font-medium text-sm">Actualiser</div><div className="text-ink-muted text-xs">{refreshing ? 'Synchronisation...' : 'Sync données'}</div></div>
               </button>
               <button onClick={() => setTab('card')} className="card p-4 flex items-center gap-3 hover:shadow-card-hover transition-shadow text-left cursor-pointer">
                 <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center"><Layers size={18} className="text-purple-500" /></div>
@@ -815,7 +842,7 @@ export default function DashboardPage() {
                       {[
                         ['Type', `${selectedCard.brand.charAt(0).toUpperCase() + selectedCard.brand.slice(1)} Virtuelle`],
                         ['Devise', selectedCard.currency],
-                        ['Créée le', new Date(selectedCard.createdAt).toLocaleDateString('fr-FR')],
+                        ['Créée le', formatDate(selectedCard.createdAt)],
                         ['Statut', selectedCard.status === 'active' ? '● Active' : '❄ Gelée'],
                       ].map(([k, v]) => (
                         <div key={k} className="flex justify-between">
@@ -903,7 +930,7 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <div className="font-medium text-sm">{n.title}</div>
                       <div className="text-ink-secondary text-xs mt-0.5">{n.message}</div>
-                      <div className="text-ink-muted text-[11px] mt-1">{new Date(n.createdAt).toLocaleString('fr-FR')}</div>
+                      <div className="text-ink-muted text-[11px] mt-1">{formatDateTime(n.createdAt)}</div>
                     </div>
                     {!n.read && <div className="w-2 h-2 bg-brand-orange rounded-full flex-shrink-0 mt-1" />}
                   </div>
@@ -949,6 +976,8 @@ export default function DashboardPage() {
           getToken={getToken}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   );
 }

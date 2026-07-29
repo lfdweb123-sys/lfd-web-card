@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDate, formatDateTime } from '@/lib/date';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -73,12 +74,12 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard' },
   ];
   return (
-    <aside className="sidebar-fixed hidden md:flex flex-col">
-      <div className="px-5 py-5 border-b border-surface-border"><Logo /></div>
+    <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
+      <div className="px-5 py-5 border-b border-white/10"><Logo /></div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(item => (
           <Link key={item.id} href={item.href}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-all duration-150">
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-all duration-150">
             {item.icon}
             <span>{item.label}</span>
           </Link>
@@ -89,7 +90,7 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
           <span>Mon profil</span>
         </div>
       </nav>
-      <div className="px-5 py-4 border-t border-surface-border">
+      <div className="px-5 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
@@ -98,7 +99,7 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
             <div className="text-sm font-medium truncate">{userName}</div>
           </div>
         </div>
-        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
           <LogOut size={16} /> Déconnexion
         </button>
       </div>
@@ -133,15 +134,15 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
-      <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
-        <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
+      <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
           <Logo />
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {items.map(item => (
             <Link key={item.label} href={item.href} onClick={onClose}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted transition-all">
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-all">
               {item.icon}<span>{item.label}</span>
             </Link>
           ))}
@@ -149,7 +150,7 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
             <User size={18} /><span>Mon profil</span>
           </div>
         </nav>
-        <div className="px-5 py-4 border-t border-surface-border">
+        <div className="px-5 py-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center">
               <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
@@ -157,7 +158,7 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
             <div className="text-sm font-medium truncate">{userName}</div>
           </div>
           <button onClick={() => { onLogout(); onClose(); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
             <LogOut size={16} /> Déconnexion
           </button>
         </div>
@@ -412,7 +413,7 @@ export default function ProfilePage() {
                     </span>
                   )}
                   {appUser?.createdAt && (
-                    <span>Membre depuis {new Date(appUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</span>
+                    <span>Membre depuis {formatDate(appUser.createdAt, { month: 'long', year: 'numeric' })}</span>
                   )}
                 </div>
               </div>
@@ -536,7 +537,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-xs mt-0.5 text-ink-secondary">
                         {kyc?.status === 'approved' && kyc.approvedAt
-                          ? `Approuvé le ${new Date(kyc.approvedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                          ? `Approuvé le ${formatDate(kyc.approvedAt)}`
                           : kyc?.status === 'pending' || kyc?.status === 'in_review'
                           ? kyc.method === 'manual'
                             ? 'Examen manuel en cours — délai : 1 à 24 h'
@@ -547,7 +548,7 @@ export default function ProfilePage() {
                       </div>
                       {kyc?.submittedAt && kyc.status !== 'approved' && (
                         <div className="text-[11px] text-ink-muted mt-1">
-                          Soumis le {new Date(kyc.submittedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          Soumis le {formatDate(kyc.submittedAt, { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
                       )}
                     </div>
@@ -711,7 +712,7 @@ export default function ProfilePage() {
                   { label: 'Statut du compte', value: appUser?.status === 'active' ? '● Actif' : '⚠ Suspendu',
                     valueClass: appUser?.status === 'active' ? 'text-brand-green' : 'text-red-500' },
                   { label: 'Membre depuis', value: appUser?.createdAt
-                    ? new Date(appUser.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                    ? formatDate(appUser.createdAt)
                     : '—' },
                 ].map(({ label, value, valueClass }) => (
                   <div key={label} className="flex items-center justify-between py-2.5 border-b border-surface-border last:border-0">
