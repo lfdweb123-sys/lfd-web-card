@@ -9,6 +9,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { AppUser } from '@/types';
 import { Logo as LogoComponent } from '@/components/Logo';
+import { SidebarLogo } from '@/components/SidebarLogo';
 import {
   CreditCard, ArrowLeft, User, Mail, Phone, Globe,
   Lock, Eye, EyeOff, CheckCircle, XCircle, Clock,
@@ -69,7 +70,7 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
   ];
   return (
     <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
-      <div className="px-5 py-5 border-b border-white/10"><Logo /></div>
+      <div className="py-5 border-b border-white/10"><SidebarLogo /></div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(item => (
           <Link key={item.id} href={item.href}
@@ -78,11 +79,6 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
             <span>{item.label}</span>
           </Link>
         ))}
-        {/* Profile — active */}
-        <div className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium bg-brand-orange text-white shadow-orange">
-          <User size={18} />
-          <span>Mon profil</span>
-        </div>
       </nav>
       <div className="px-5 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 mb-3">
@@ -92,6 +88,9 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{userName}</div>
           </div>
+        </div>
+        <div className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium bg-brand-orange text-white shadow-orange mb-1">
+          <User size={16} /> Mon profil
         </div>
         <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
           <LogOut size={16} /> Déconnexion
@@ -129,9 +128,9 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
     <>
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
       <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
-        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
-          <Logo />
-          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center"><X size={15} /></button>
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between gap-3">
+          <div className="w-36"><SidebarLogo /></div>
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0"><X size={15} /></button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {items.map(item => (
@@ -140,9 +139,6 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
               {item.icon}<span>{item.label}</span>
             </Link>
           ))}
-          <div className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium bg-brand-orange text-white shadow-orange">
-            <User size={18} /><span>Mon profil</span>
-          </div>
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-3">
@@ -150,6 +146,9 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
               <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
             </div>
             <div className="text-sm font-medium truncate">{userName}</div>
+          </div>
+          <div className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium bg-brand-orange text-white shadow-orange mb-1">
+            <User size={16} /> Mon profil
           </div>
           <button onClick={() => { onLogout(); onClose(); }}
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">

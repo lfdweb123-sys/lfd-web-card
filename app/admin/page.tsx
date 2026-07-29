@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatDateTime } from '@/lib/date';
 import { Logo as LogoComponent } from '@/components/Logo';
+import { SidebarLogo } from '@/components/SidebarLogo';
 import {
   Users, CreditCard, TrendingUp, Activity, LogOut, Shield,
   CheckCircle, Ban, UserCheck, Search, Home,
@@ -37,9 +38,9 @@ function Sidebar({ active, onNav, onLogout, email }: {
 }) {
   return (
     <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
-      <div className="px-5 py-5 border-b border-white/10">
-        <Logo />
-        <div className="mt-3 px-1"><span className="badge-orange text-[11px]">Admin</span></div>
+      <div className="py-5 border-b border-white/10">
+        <SidebarLogo href="/admin" />
+        <div className="mt-3 px-5"><span className="badge-orange text-[11px]">Admin</span></div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(item => (
@@ -75,12 +76,12 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, email }: {
     <>
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
       <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
-        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <Logo />
-            <div className="mt-2 px-1"><span className="badge-orange text-[11px]">Admin</span></div>
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between gap-3">
+          <div className="w-36">
+            <SidebarLogo href="/admin" />
+            <div className="mt-2"><span className="badge-orange text-[11px]">Admin</span></div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
             <X size={15} />
           </button>
         </div>

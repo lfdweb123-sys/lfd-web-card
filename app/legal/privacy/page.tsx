@@ -57,13 +57,13 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-5 space-y-2">
               <li><strong className="text-ink-primary">Notre émetteur de cartes partenaire</strong> : pour l'émission de votre carte virtuelle (nom, email)</li>
               <li><strong className="text-ink-primary">LFD Payment Gateway</strong> : pour le traitement des paiements Mobile Money</li>
-              <li><strong className="text-ink-primary">Firebase (Google)</strong> : pour l'authentification et le stockage sécurisé des données</li>
+              <li><strong className="text-ink-primary">Notre infrastructure d'hébergement sécurisée</strong> : pour l'authentification et le stockage sécurisé des données</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-ink-primary mb-3">5. Sécurité des données</h2>
-            <p>Nous appliquons des mesures de sécurité strictes : chiffrement des données en transit (HTTPS/TLS), stockage sécurisé dans Firebase Firestore avec des règles d'accès strictes, authentification à deux facteurs disponible, et journalisation de toutes les actions sensibles.</p>
+            <p>Nous appliquons des mesures de sécurité strictes : chiffrement des données en transit (HTTPS/TLS), stockage sécurisé de vos données avec des règles d'accès strictes, authentification à deux facteurs disponible, et journalisation de toutes les actions sensibles.</p>
           </section>
 
           <section>

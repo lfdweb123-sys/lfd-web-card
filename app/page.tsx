@@ -126,7 +126,7 @@ function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-surface-border">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6">
+      <div className="w-full px-5 sm:px-8 lg:px-12 xl:px-16">
         <div className="flex items-center justify-between h-16">
           <Logo />
 
@@ -248,9 +248,16 @@ function HeroCard() {
       >
         <div className="flex items-start justify-between mb-8">
           <div
-            className="w-10 h-7 rounded-md"
+            className="relative w-10 h-7 rounded-md overflow-hidden"
             style={{ background: 'linear-gradient(135deg,#f6d365,#fda085)' }}
-          />
+          >
+            {/* Détail réaliste de puce EMV : trois tirets de contact */}
+            <div className="absolute inset-x-1.5 top-1/2 -translate-y-1/2 space-y-[3px]">
+              <div className="h-[2px] rounded-full bg-black/25" />
+              <div className="h-[2px] rounded-full bg-black/25" />
+              <div className="h-[2px] rounded-full bg-black/25" />
+            </div>
+          </div>
           <div className="text-right">
             <div className="text-white/40 text-[10px] font-medium tracking-widest">VIRTUAL</div>
             <div className="font-bold text-sm tracking-widest">VISA</div>
