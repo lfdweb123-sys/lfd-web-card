@@ -409,7 +409,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
                 <div className={`w-7 h-7 rounded-full ${brand === 'mastercard' ? 'bg-brand-orange' : 'bg-red-400'}`} />
                 <div className={`w-7 h-7 rounded-full opacity-80 ${brand === 'mastercard' ? 'bg-yellow-400' : 'bg-yellow-300'}`} />
               </div>
-              <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard (EURO-MASTER)</span>
+              <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard</span>
             </button>
           </div>
         </div>

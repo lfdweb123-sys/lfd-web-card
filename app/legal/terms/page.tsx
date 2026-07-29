@@ -55,7 +55,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-2">
               <li><strong className="text-ink-primary">Création de carte</strong> : 5 000 FCFA (paiement unique, non remboursable)</li>
               <li><strong className="text-ink-primary">Rechargement</strong> : montant minimum de 3 000 FCFA, maximum de 500 000 FCFA</li>
-              <li><strong className="text-ink-primary">Frais de rechargement</strong> : inclus dans le service (voir dashboard Pagocards pour les frais applicables)</li>
+              <li><strong className="text-ink-primary">Frais de rechargement</strong> : inclus dans le service (voir votre tableau de bord pour les frais applicables)</li>
             </ul>
             <p className="mt-3">La conversion FCFA vers USD est effectuée au taux du marché en vigueur au moment de la transaction.</p>
           </section>
@@ -85,7 +85,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-ink-primary mb-3">8. Limitation de responsabilité</h2>
-            <p>LFD WEB CARD ne peut être tenu responsable des pertes indirectes, accessoires ou consécutives découlant de l'utilisation ou de l'impossibilité d'utiliser notre service, des interruptions de service dues à des tiers (Pagocards, opérateurs Mobile Money), ou des fluctuations des taux de change.</p>
+            <p>LFD WEB CARD ne peut être tenu responsable des pertes indirectes, accessoires ou consécutives découlant de l'utilisation ou de l'impossibilité d'utiliser notre service, des interruptions de service dues à des tiers (émetteur de cartes, opérateurs Mobile Money), ou des fluctuations des taux de change.</p>
           </section>
 
           <section>

@@ -363,7 +363,7 @@ function Hero() {
           <p className="text-ink-secondary text-lg leading-relaxed mb-8 max-w-lg">
             {isLoggedIn
               ? 'Gérez votre carte, consultez vos transactions et rechargez votre solde depuis votre tableau de bord.'
-              : 'Payez sur Amazon, Netflix, Alibaba et partout dans le monde. Obtenez votre carte Visa virtuelle instantanément après paiement Mobile Money.'}
+              : 'Payez sur Amazon, Netflix, Alibaba et partout dans le monde. Obtenez votre carte Visa ou Mastercard virtuelle instantanément après paiement Mobile Money.'}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-7">
@@ -452,7 +452,7 @@ function Features() {
       icon: <Globe size={22} className="text-blue-500" />,
       bg: 'bg-blue-50',
       title: 'Acceptée partout',
-      desc: 'Votre carte Visa fonctionne sur tous les sites e-commerce : Amazon, Netflix, Shopify, PayPal, Google, Apple Store et bien plus.',
+      desc: 'Vos cartes Visa et Mastercard fonctionnent sur tous les sites e-commerce : Amazon, Netflix, Shopify, PayPal, Google, Apple Store et bien plus.',
     },
     {
       icon: <Shield size={22} className="text-brand-green" />,
@@ -532,7 +532,7 @@ function HowItWorks() {
       n: '03',
       icon: <CreditCard size={20} />,
       title: 'Recevez votre carte',
-      desc: 'Votre carte virtuelle Visa est créée automatiquement après confirmation du paiement.',
+      desc: 'Votre carte virtuelle Visa ou Mastercard est créée automatiquement après confirmation du paiement.',
     },
     {
       n: '04',
@@ -584,7 +584,7 @@ function Where() {
         <FadeIn>
           <h2 className="text-3xl font-bold mb-4">Utilisable sur des milliers de sites</h2>
           <p className="text-ink-secondary mb-10">
-            Partout où Visa est accepté, votre carte fonctionne.
+            Partout où Visa et Mastercard sont acceptées, votre carte fonctionne.
           </p>
         </FadeIn>
         <Stagger className="flex flex-wrap justify-center gap-3">
@@ -639,7 +639,7 @@ function Pricing() {
             </p>
             <ul className="space-y-3 mb-7">
               {[
-                'Carte Visa ou EURO-MASTER virtuelle',
+                'Carte Visa ou Mastercard virtuelle',
                 'Activation instantanée',
                 'Protection 3D Secure',
                 'Support prioritaire',
@@ -718,7 +718,7 @@ function FAQ() {
     ],
     [
       'Puis-je utiliser la carte sur PayPal ou Amazon ?',
-      "Oui ! Votre carte Visa fonctionne sur tous les sites qui acceptent Visa : Amazon, PayPal, Netflix, Google Play, Apple Store, et des milliers d'autres.",
+      "Oui ! Vos cartes Visa et Mastercard fonctionnent sur tous les sites qui les acceptent : Amazon, PayPal, Netflix, Google Play, Apple Store, et des milliers d'autres.",
     ],
     [
       'Comment recharger ma carte ?',

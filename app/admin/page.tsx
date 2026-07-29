@@ -303,8 +303,8 @@ export default function AdminPage() {
               <div className="card p-5 border-l-4 border-yellow-400 bg-yellow-50">
                 <h4 className="font-semibold text-yellow-800 mb-2">Webhooks à configurer</h4>
                 <div className="text-xs font-mono text-yellow-700 space-y-1 bg-yellow-100 rounded-xl p-3">
-                  <div>LFD Gateway : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/payment</div>
-                  <div>Pagocards   : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/pagocards</div>
+                  <div>LFD Gateway      : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/payment</div>
+                  <div>Émetteur cartes : {typeof window !== 'undefined' ? window.location.origin : 'https://card.lfdweb.com'}/api/webhook/pagocards</div>
                 </div>
               </div>
             </>

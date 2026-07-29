@@ -55,7 +55,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-ink-primary mb-3">4. Partage des données</h2>
             <p className="mb-3">Nous ne vendons jamais vos données personnelles. Nous partageons certaines informations uniquement avec :</p>
             <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-ink-primary">Pagocards</strong> : pour l'émission de votre carte virtuelle (nom, email)</li>
+              <li><strong className="text-ink-primary">Notre émetteur de cartes partenaire</strong> : pour l'émission de votre carte virtuelle (nom, email)</li>
               <li><strong className="text-ink-primary">LFD Payment Gateway</strong> : pour le traitement des paiements Mobile Money</li>
               <li><strong className="text-ink-primary">Firebase (Google)</strong> : pour l'authentification et le stockage sécurisé des données</li>
             </ul>
