@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
-import { approve3DS } from '@/lib/pagocards';
 import { z } from 'zod';
+
+// NOTE: la documentation officielle Pagocards ne liste aucun endpoint d'approbation
+// manuelle du 3DS (pas de /api/.../approve3ds). Le webhook Pagocards livre déjà la
+// décision (APPROVED / DECLINED / PENDING) sur l'événement "3ds". Cette route se
+// contente donc d'accuser réception côté app (marquer la notif comme traitée).
+// À réévaluer avec le support Pagocards si un déclenchement actif est nécessaire.
 
 const Schema = z.object({ cardId: z.string().min(1), eventId: z.string().min(1), notificationId: z.string().min(1) });
 
@@ -18,8 +23,7 @@ export async function POST(req: NextRequest) {
     if (!cardDoc.exists || cardDoc.data()!.userId !== user.uid)
       return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 });
 
-    const card = cardDoc.data()!;
-    await approve3DS({ email: card.email, cardid: card.pagocardsCardId, eventId });
+    void eventId; // conservé pour traçabilité, pas envoyé à Pagocards (endpoint non documenté)
     await adminDb.collection('notifications').doc(notificationId).update({ read: true, requiresAction: false, resolvedAt: new Date().toISOString() });
     await cardDoc.ref.update({ pendingAction: null });
 

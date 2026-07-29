@@ -41,8 +41,8 @@ function Sidebar({ active, onNav, onLogout, email }: {
   active: string; onNav: (s: string) => void; onLogout: () => void; email: string;
 }) {
   return (
-    <aside className="sidebar-fixed hidden md:flex flex-col">
-      <div className="px-5 py-5 border-b border-surface-border">
+    <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
+      <div className="px-5 py-5 border-b border-white/10">
         <Logo />
         <div className="mt-3 px-1"><span className="badge-orange text-[11px]">Admin</span></div>
       </div>
@@ -50,19 +50,19 @@ function Sidebar({ active, onNav, onLogout, email }: {
         {NAV_ITEMS.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left
-              ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+              ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
             {item.icon}<span>{item.label}</span>
           </button>
         ))}
         <Link href="/admin/kyc"
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left text-ink-secondary hover:bg-surface-muted hover:text-ink-primary">
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left text-white/60 hover:bg-white/10 hover:text-white">
           <ClipboardList size={18} /><span>Vérifications KYC</span>
         </Link>
       </nav>
-      <div className="px-5 py-4 border-t border-surface-border">
-        <div className="text-xs text-ink-muted mb-3 truncate">{email}</div>
+      <div className="px-5 py-4 border-t border-white/10">
+        <div className="text-xs text-white/40 mb-3 truncate">{email}</div>
         <button onClick={onLogout}
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
           <LogOut size={16} />Déconnexion
         </button>
       </div>
@@ -79,13 +79,13 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, email }: {
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
-      <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
-        <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
+      <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
           <div>
             <Logo />
             <div className="mt-2 px-1"><span className="badge-orange text-[11px]">Admin</span></div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center">
             <X size={15} />
           </button>
         </div>
@@ -93,19 +93,19 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, email }: {
           {NAV_ITEMS.map(item => (
             <button key={item.id} onClick={() => { onNav(item.id); onClose(); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left
-                ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+                ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
               {item.icon}<span>{item.label}</span>
             </button>
           ))}
           <Link href="/admin/kyc" onClick={onClose}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left text-ink-secondary hover:bg-surface-muted hover:text-ink-primary">
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left text-white/60 hover:bg-white/10 hover:text-white">
             <ClipboardList size={18} /><span>Vérifications KYC</span>
           </Link>
         </nav>
-        <div className="px-5 py-4 border-t border-surface-border">
-          <div className="text-xs text-ink-muted mb-3 truncate">{email}</div>
+        <div className="px-5 py-4 border-t border-white/10">
+          <div className="text-xs text-white/40 mb-3 truncate">{email}</div>
           <button onClick={() => { onLogout(); onClose(); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
             <LogOut size={16} />Déconnexion
           </button>
         </div>
@@ -409,7 +409,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="bg-surface-bg">
+    <div className="stripes-light min-h-screen">
       <Sidebar active={tab} onNav={setTab} onLogout={logout} email={appUser?.email || ''} />
       <MobileTopBar onMenu={() => setDrawerOpen(true)} />
       <MobileDrawer

@@ -1,8 +1,10 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { FadeIn, Stagger, StaggerItem } from '@/components/FadeIn';
 import {
   CreditCard, Globe, Shield, Zap, ArrowRight, CheckCircle, Star,
   Menu, X, ChevronDown, Smartphone, Lock, TrendingUp, Users,
@@ -245,7 +247,11 @@ function HeroCard() {
         className="absolute top-5 left-5 right-0 h-44 rounded-3xl opacity-30"
         style={{ background: 'linear-gradient(135deg,#111827,#1e3a5f)' }}
       />
-      <div className="relative vcard shadow-2xl">
+      <motion.div
+        className="relative vcard shadow-2xl glow-orange"
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      >
         <div className="flex items-start justify-between mb-8">
           <div
             className="w-10 h-7 rounded-md"
@@ -281,7 +287,7 @@ function HeroCard() {
             backgroundSize: '8px 8px',
           }}
         />
-      </div>
+      </motion.div>
       <div className="absolute -bottom-3 -right-3 bg-white rounded-2xl shadow-card-hover p-3 flex items-center gap-2 border border-surface-border animate-slide-up">
         <div className="w-7 h-7 bg-brand-green-light rounded-xl flex items-center justify-center">
           <CheckCircle size={14} className="text-brand-green" />
@@ -309,9 +315,28 @@ function Hero() {
     '';
 
   return (
-    <section className="pt-28 pb-20 px-5 sm:px-6">
+    <section className="relative pt-28 pb-20 px-5 sm:px-6 overflow-hidden">
+      {/* Fond dynamique */}
+      <div className="absolute inset-0 -z-10 stripes-light" aria-hidden />
+      <motion.div
+        className="absolute top-10 -left-24 w-96 h-96 bg-brand-orange/10 rounded-full blur-[100px] -z-10"
+        animate={{ y: [0, -20, 0], x: [0, 15, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        aria-hidden
+      />
+      <motion.div
+        className="absolute top-40 right-0 w-[26rem] h-[26rem] bg-brand-green/10 rounded-full blur-[110px] -z-10"
+        animate={{ y: [0, 25, 0], x: [0, -15, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        aria-hidden
+      />
+
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-        <div className="animate-fade-in">
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
           {/* Badge */}
           <div className="inline-flex items-center gap-1.5 bg-brand-orange-light border border-brand-orange/20 rounded-full px-4 py-1.5 text-sm text-brand-orange font-semibold mb-6">
             <Star size={13} fill="currentColor" />
@@ -320,7 +345,7 @@ function Hero() {
               : 'Carte acceptée dans 180+ pays'}
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold leading-[1.1] mb-5">
+          <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-bold leading-[1.08] mb-5 tracking-tight">
             {isLoggedIn ? (
               <>
                 Votre espace{' '}
@@ -353,8 +378,9 @@ function Hero() {
               </>
             ) : (
               <>
-                <Link href="/auth/register" className="btn-primary text-base py-3.5">
-                  Obtenir ma carte maintenant <ArrowRight size={18} />
+                <Link href="/auth/register" className="btn-primary text-base py-3.5 relative overflow-hidden">
+                  <span className="relative z-10 flex items-center gap-2">Obtenir ma carte maintenant <ArrowRight size={18} /></span>
+                  <span className="absolute inset-0 animate-shimmer" aria-hidden />
                 </Link>
                 <a href="#how" className="btn-secondary text-base py-3.5">
                   Comment ça marche
@@ -370,14 +396,19 @@ function Hero() {
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle size={15} className="text-brand-green" />
-              {isLoggedIn ? 'Support prioritaire' : 'Sans frais cachés'}
+              {isLoggedIn ? 'Support prioritaire' : 'Frais mobile money transparents (5%)'}
             </span>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="flex justify-center lg:justify-end">
+        <motion.div
+          className="flex justify-center lg:justify-end"
+          initial={{ opacity: 0, y: 28, rotate: -2 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        >
           <HeroCard />
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -389,19 +420,19 @@ function Hero() {
 function Stats() {
   return (
     <section className="py-10 border-y border-surface-border bg-white">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <Stagger className="max-w-6xl mx-auto px-5 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
           ['5 min', 'Pour obtenir votre carte'],
           ['180+', 'Pays acceptés'],
           ['3DS', 'Sécurité renforcée'],
           ['24/7', 'Support disponible'],
         ].map(([v, l]) => (
-          <div key={v} className="text-center">
+          <StaggerItem key={v} className="text-center">
             <div className="text-3xl font-bold text-brand-orange">{v}</div>
             <div className="text-ink-secondary text-sm mt-1">{l}</div>
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
     </section>
   );
 }
@@ -452,18 +483,18 @@ function Features() {
   return (
     <section id="features" className="py-20 px-5 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <FadeIn className="text-center mb-14">
           <p className="text-ink-muted text-sm font-medium mb-3">Pourquoi nous choisir</p>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Tout ce dont vous avez besoin</h2>
           <p className="text-ink-secondary text-lg max-w-xl mx-auto">
             Une solution simple, rapide et sécurisée conçue pour l'Afrique.
           </p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        </FadeIn>
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((f) => (
-            <div
+            <StaggerItem
               key={f.title}
-              className="card p-6 hover:shadow-card-hover transition-shadow duration-300"
+              className="card p-6 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300"
             >
               <div
                 className={`w-11 h-11 ${f.bg} rounded-2xl flex items-center justify-center mb-4`}
@@ -472,9 +503,9 @@ function Features() {
               </div>
               <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
               <p className="text-ink-secondary text-sm leading-relaxed">{f.desc}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );
@@ -514,15 +545,15 @@ function HowItWorks() {
   return (
     <section id="how" className="py-20 px-5 sm:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <FadeIn className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Obtenez votre carte en 4 étapes
           </h2>
           <p className="text-ink-secondary text-lg">Simple, rapide, sans tracas.</p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        </FadeIn>
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {steps.map((s) => (
-            <div key={s.n}>
+            <StaggerItem key={s.n}>
               <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center text-white mb-4 shadow-orange">
                 {s.icon}
               </div>
@@ -531,9 +562,9 @@ function HowItWorks() {
               </div>
               <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
               <p className="text-ink-secondary text-sm leading-relaxed">{s.desc}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );
@@ -550,23 +581,25 @@ function Where() {
   return (
     <section className="py-20 px-5 sm:px-6">
       <div className="max-w-6xl mx-auto text-center">
-        <h2 className="text-3xl font-bold mb-4">Utilisable sur des milliers de sites</h2>
-        <p className="text-ink-secondary mb-10">
-          Partout où Visa est accepté, votre carte fonctionne.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
+        <FadeIn>
+          <h2 className="text-3xl font-bold mb-4">Utilisable sur des milliers de sites</h2>
+          <p className="text-ink-secondary mb-10">
+            Partout où Visa est accepté, votre carte fonctionne.
+          </p>
+        </FadeIn>
+        <Stagger className="flex flex-wrap justify-center gap-3">
           {p.map((x) => (
-            <div
+            <StaggerItem
               key={x}
-              className="bg-white border border-surface-border rounded-2xl px-5 py-3 text-sm font-medium text-ink-secondary hover:border-brand-orange/30 hover:shadow-card transition-all duration-200 cursor-default"
+              className="bg-white border border-surface-border rounded-2xl px-5 py-3 text-sm font-medium text-ink-secondary hover:border-brand-orange/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-default"
             >
               {x}
-            </div>
+            </StaggerItem>
           ))}
-          <div className="bg-brand-orange-light border border-brand-orange/20 rounded-2xl px-5 py-3 text-sm font-medium text-brand-orange">
+          <StaggerItem className="bg-brand-orange-light border border-brand-orange/20 rounded-2xl px-5 py-3 text-sm font-medium text-brand-orange">
             + des milliers d'autres
-          </div>
-        </div>
+          </StaggerItem>
+        </Stagger>
       </div>
     </section>
   );
@@ -582,17 +615,17 @@ function Pricing() {
   return (
     <section id="pricing" className="py-20 px-5 sm:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <FadeIn className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Tarifs simples et transparents
           </h2>
           <p className="text-ink-secondary text-lg">
-            Aucun frais caché. Payez une fois, utilisez à vie.
+            Frais annoncés à l'avance. Payez une fois, utilisez à vie.
           </p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        </FadeIn>
+        <Stagger className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {/* Card creation */}
-          <div className="card p-8 border-2 border-brand-orange relative">
+          <StaggerItem className="card p-8 border-2 border-brand-orange relative hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300">
             <span className="badge-orange absolute top-5 right-5">Populaire</span>
             <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center mb-5">
               <CreditCard size={22} className="text-white" />
@@ -602,11 +635,11 @@ function Pricing() {
               5 000 <span className="text-xl font-medium text-ink-secondary">FCFA</span>
             </div>
             <p className="text-ink-secondary text-sm mb-6">
-              Paiement unique. Carte valable 3 ans.
+              + 5% de frais Mobile Money, affichés avant paiement. Carte valable 3 ans.
             </p>
             <ul className="space-y-3 mb-7">
               {[
-                'Carte Visa virtuelle internationale',
+                'Carte Visa ou EURO-MASTER virtuelle',
                 'Activation instantanée',
                 'Protection 3D Secure',
                 'Support prioritaire',
@@ -626,10 +659,10 @@ function Pricing() {
                 Obtenir ma carte
               </Link>
             )}
-          </div>
+          </StaggerItem>
 
           {/* Recharge */}
-          <div className="card p-8">
+          <StaggerItem className="card p-8 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300">
             <div className="w-12 h-12 bg-brand-green-light rounded-2xl flex items-center justify-center mb-5">
               <TrendingUp size={22} className="text-brand-green" />
             </div>
@@ -662,8 +695,8 @@ function Pricing() {
                 Créer un compte
               </Link>
             )}
-          </div>
-        </div>
+          </StaggerItem>
+        </Stagger>
       </div>
     </section>
   );
@@ -704,12 +737,12 @@ function FAQ() {
   return (
     <section id="faq" className="py-20 px-5 sm:px-6">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-14">
+        <FadeIn className="text-center mb-14">
           <h2 className="text-3xl font-bold">Questions fréquentes</h2>
-        </div>
-        <div className="space-y-3">
+        </FadeIn>
+        <Stagger className="space-y-3" gap={0.05}>
           {faqs.map(([q, a], i) => (
-            <div key={i} className="card overflow-hidden">
+            <StaggerItem key={i} className="card overflow-hidden">
               <button
                 className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-muted transition-colors"
                 onClick={() => setOpen(open === i ? null : i)}
@@ -721,13 +754,18 @@ function FAQ() {
                 />
               </button>
               {open === i && (
-                <div className="px-5 pb-5 text-ink-secondary text-sm leading-relaxed border-t border-surface-border pt-4 animate-fade-in">
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.25 }}
+                  className="px-5 pb-5 text-ink-secondary text-sm leading-relaxed border-t border-surface-border pt-4"
+                >
                   {a}
-                </div>
+                </motion.div>
               )}
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );
@@ -743,12 +781,18 @@ function CTA() {
   return (
     <section className="py-20 px-5 sm:px-6">
       <div className="max-w-4xl mx-auto">
-        <div
-          className="relative rounded-3xl overflow-hidden p-10 sm:p-16 text-center text-white"
-          style={{ background: 'linear-gradient(135deg,#FF7A00 0%,#E06A00 100%)' }}
+        <FadeIn
+          className="relative rounded-3xl overflow-hidden p-10 sm:p-16 text-center text-white animate-gradient"
+          style={{ background: 'linear-gradient(115deg,#FF7A00 0%,#E06A00 40%,#FF9433 70%,#FF7A00 100%)' }}
         >
           <div
             className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(135deg,white 0,white 1px,transparent 1px,transparent 16px)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-20"
             style={{
               backgroundImage: 'radial-gradient(circle,white 1px,transparent 1px)',
               backgroundSize: '32px 32px',
@@ -786,7 +830,7 @@ function CTA() {
                 : 'Activation en moins de 5 minutes · Paiement Mobile Money'}
             </p>
           </div>
-        </div>
+        </FadeIn>
       </div>
     </section>
   );
@@ -893,7 +937,7 @@ function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-surface-border pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-ink-muted">
-          <div>© 2025 LFD WEB CARD. Tous droits réservés.</div>
+          <div>© 2026 LFD WEB CARD. Tous droits réservés.</div>
           <div className="flex items-center gap-1.5">
             <Shield size={13} className="text-brand-green" />
             Paiements sécurisés par LFD Gateway

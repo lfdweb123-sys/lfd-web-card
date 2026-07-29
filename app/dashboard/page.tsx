@@ -146,19 +146,19 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
 }) {
   const items = navItems(unread);
   return (
-    <aside className="sidebar-fixed hidden md:flex flex-col">
-      <div className="px-5 py-5 border-b border-surface-border"><Logo /></div>
+    <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
+      <div className="px-5 py-5 border-b border-white/10"><Logo /></div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
             {item.icon}
             <span className="flex-1">{item.label}</span>
             {item.badge ? <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
           </button>
         ))}
       </nav>
-<div className="px-5 py-4 border-t border-surface-border">
+<div className="px-5 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
@@ -168,10 +168,10 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
           </div>
         </div>
         <Link href="/profile"
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-colors mb-1">
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors mb-1">
           <UserCircle size={16} /> Mon profil
         </Link>
-        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
           <LogOut size={16} /> Déconnexion
         </button>
       </div>
@@ -189,22 +189,22 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
-      <div className="fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col shadow-2xl md:hidden">
-        <div className="px-5 py-5 border-b border-surface-border flex items-center justify-between">
+      <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
           <Logo />
-          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {items.map(item => (
             <button key={item.id} onClick={() => { onNav(item.id); onClose(); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-ink-secondary hover:bg-surface-muted hover:text-ink-primary'}`}>
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
               {item.icon}
               <span className="flex-1">{item.label}</span>
               {item.badge ? <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
             </button>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-surface-border">
+        <div className="px-5 py-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
               <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
@@ -212,10 +212,10 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
             <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{userName}</div></div>
           </div>
           <Link href="/profile" onClick={onClose}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink-primary transition-colors mb-1">
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors mb-1">
             <UserCircle size={16} /> Mon profil
           </Link>
-          <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-red-600 transition-colors">
+          <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
             <LogOut size={16} /> Déconnexion
           </button>
         </div>
@@ -354,6 +354,11 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const CARD_PRICE = 5000; // doit rester synchronisé avec CARD_CREATION_PRICE côté serveur
+  const FEE_RATE = 0.05;
+  const fee = Math.round(CARD_PRICE * FEE_RATE);
+  const total = CARD_PRICE + fee;
+
   const handle = async () => {
     setLoading(true); setError('');
     try {
@@ -376,7 +381,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
         <div className="flex justify-between items-start mb-5">
           <div>
             <h3 className="font-bold text-xl">{hasCards ? 'Commander une nouvelle carte' : 'Acheter une carte'}</h3>
-            <p className="text-ink-secondary text-sm">Paiement unique de 5 000 FCFA</p>
+            <p className="text-ink-secondary text-sm">Paiement unique · {total.toLocaleString()} FCFA au total</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
@@ -402,7 +407,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
                 <div className={`w-7 h-7 rounded-full ${brand === 'mastercard' ? 'bg-brand-orange' : 'bg-red-400'}`} />
                 <div className={`w-7 h-7 rounded-full opacity-80 ${brand === 'mastercard' ? 'bg-yellow-400' : 'bg-yellow-300'}`} />
               </div>
-              <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard</span>
+              <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard (EURO-MASTER)</span>
             </button>
           </div>
         </div>
@@ -419,9 +424,9 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
 
         <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Carte {brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle</span><span className="font-medium">5 000 FCFA</span></div>
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="text-brand-green font-medium">Offerts</span></div>
-          <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">5 000 FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Carte {brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle</span><span className="font-medium">{CARD_PRICE.toLocaleString()} FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais Mobile Money (5%)</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
+          <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{total.toLocaleString()} FCFA</span></div>
         </div>
 
         <button onClick={handle} disabled={loading} className="btn-primary w-full py-3.5">
@@ -912,7 +917,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="bg-surface-bg">
+    <div className="stripes-light min-h-screen">
       <Sidebar active={tab} onNav={setTab} onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} unread={unread} />
       <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unread} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} active={tab} onNav={setTab}

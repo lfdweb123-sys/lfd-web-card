@@ -248,7 +248,7 @@ export default function KycPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-bg">
+    <div className="min-h-screen stripes-light">
       {/* Header */}
       <header className="bg-white border-b border-surface-border sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-5 h-16 flex items-center justify-between">

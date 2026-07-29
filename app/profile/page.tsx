@@ -361,7 +361,7 @@ export default function ProfilePage() {
   const countryObj = COUNTRIES.find(c => c.code === (appUser?.country || country));
 
   return (
-    <div className="bg-surface-bg min-h-screen">
+    <div className="stripes-light min-h-screen">
       <Sidebar onLogout={logout} userName={userName} />
       <MobileTopBar onMenu={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onLogout={logout} userName={userName} />

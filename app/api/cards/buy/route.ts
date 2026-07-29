@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { generatePaymentLink } from '@/lib/payment-gateway';
 
 const CARD_PRICE = Number(process.env.CARD_CREATION_PRICE) || 5000;
+const PURCHASE_FEE_RATE = 0.05; // frais mobile money 5% sur chaque achat de carte
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,14 +29,20 @@ export async function POST(req: NextRequest) {
     if (!existing.empty)
       return NextResponse.json({ success: false, error: 'Vous avez déjà une carte active.' }, { status: 400 });
 
+    // ✅ Séparation prix de la carte / frais mobile money (5%)
+    const fee = Math.round(CARD_PRICE * PURCHASE_FEE_RATE);
+    const total = CARD_PRICE + fee; // montant réel facturé au client via mobile money
+
     const txRef = await adminDb.collection('transactions').add({
       userId: user.uid, type: 'card_purchase', amount: CARD_PRICE,
+      fee, total,
       currency: 'XOF', status: 'pending', brand,
       createdAt: new Date().toISOString(),
     });
 
+    // La passerelle encaisse le total (prix carte + frais mobile money 5%)
     const { url, pid } = await generatePaymentLink({
-      amount: CARD_PRICE,
+      amount: total,
       description: `Achat carte ${brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle LFD WEB CARD`,
       transactionId: txRef.id,
       userId: user.uid,

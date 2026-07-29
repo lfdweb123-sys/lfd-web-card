@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
-import { createCard, fundCard, type CardBrand } from '@/lib/pagocards';
+import { createCard, fundCard, getCard, getMastercardSensitive, type CardBrand } from '@/lib/pagocards';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 
 const OK = () => NextResponse.json({ received: true });
@@ -105,22 +105,43 @@ async function handlePurchase(
 
   const brand: CardBrand = (tx.brand as CardBrand) || (meta?.brand as CardBrand) || 'visa';
 
-  const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string, initialload: 0 });
+  const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string });
   if (!pagoRes.success) throw new Error(pagoRes.message || 'Card creation failed');
 
-  const [expiryMonth, expiryYear] = (pagoRes.expiry || '12/28').split('/');
+  // La réponse de création (doc Pagocards) ne renvoie que cardid/useremail/nameoncard.
+  // On complète avec getcard (solde/devise/statut) et, pour l'EURO-MASTER, getcardsensitive
+  // (numéro/CVC/mois d'expiration via une URL d'embed signée).
+  let last4 = '****';
+  let expiryMonth = '12';
+  let expiryYear = String(new Date().getFullYear() + 3).slice(-2);
+  let balance = 0;
+  let currency = brand === 'visa' ? 'USD' : 'EUR';
+
+  try {
+    const details = await getCard({ brand, cardid: pagoRes.cardid, email: user.email as string });
+    balance = details.balance ?? 0;
+    currency = details.currency || currency;
+  } catch { /* détails non bloquants pour la création */ }
+
+  if (brand === 'mastercard') {
+    try {
+      const sensitive = await getMastercardSensitive({ cardid: pagoRes.cardid, email: user.email as string });
+      if (sensitive.cardnumber) last4 = sensitive.cardnumber.slice(-4);
+      if (sensitive.month) expiryMonth = sensitive.month.padStart(2, '0');
+    } catch { /* non bloquant, dispo plus tard via /api/getcardsensitive */ }
+  }
 
   const cardRef = await adminDb.collection('cards').add({
     userId: tx.userId,
     pagocardsCardId: pagoRes.cardid,
-    last4: pagoRes.cardnumber?.slice(-4) || '****',
+    last4,
     brand,
-    expiryMonth: expiryMonth || '12',
-    expiryYear: expiryYear || '28',
+    expiryMonth,
+    expiryYear,
     cardholderName: `${firstname} ${lastname}`.toUpperCase(),
     email: user.email,
-    currency: 'USD',
-    balance: pagoRes.balance ?? 0,
+    currency,
+    balance,
     status: 'active',
     createdAt: new Date().toISOString(),
   });
@@ -132,10 +153,25 @@ async function handlePurchase(
     completedAt: new Date().toISOString(),
   });
 
+  // Frais mobile money de 5% sur l'achat de carte → revenu plateforme
+  if (tx.fee) {
+    await adminDb.collection('platform_revenue').add({
+      type: 'purchase_fee',
+      userId: tx.userId,
+      cardId: cardRef.id,
+      amountXOF: tx.amount,
+      totalXOF: tx.total,
+      feeXOF: tx.fee,
+      rate: 0.05,
+      brand,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   await adminDb.collection('notifications').add({
     userId: tx.userId, cardId: cardRef.id, type: 'card_created',
     title: 'Votre carte est prête ! 🎉',
-    message: `Votre carte virtuelle ${brand === 'visa' ? 'Visa' : 'Mastercard'} *${pagoRes.cardnumber?.slice(-4)} a été créée avec succès.`,
+    message: `Votre carte virtuelle ${brand === 'visa' ? 'Visa' : 'Mastercard'} *${last4} a été créée avec succès.`,
     read: false, createdAt: new Date().toISOString(),
   });
 

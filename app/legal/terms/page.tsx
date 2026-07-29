@@ -3,7 +3,7 @@ import { CreditCard, ArrowLeft } from 'lucide-react';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-surface-bg">
+    <div className="min-h-screen stripes-light">
       <header className="bg-white border-b border-surface-border">
         <div className="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
