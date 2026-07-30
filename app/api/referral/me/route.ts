@@ -14,14 +14,22 @@ export async function GET(req: NextRequest) {
     if (!referrerDoc.exists)
       return NextResponse.json({ success: false, error: 'Compte parrain introuvable.' }, { status: 404 });
 
-    const earningsSnap = await adminDb.collection('referral_earnings')
-      .where('referrerId', '==', user.uid)
-      .orderBy('createdAt', 'desc')
-      .limit(page * PAGE_SIZE + 1)
-      .get();
-    const all = earningsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const hasMore = all.length > page * PAGE_SIZE;
-    const earnings = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    let earnings: unknown[] = [];
+    let hasMore = false;
+    try {
+      const earningsSnap = await adminDb.collection('referral_earnings')
+        .where('referrerId', '==', user.uid)
+        .orderBy('createdAt', 'desc')
+        .limit(page * PAGE_SIZE + 1)
+        .get();
+      const all = earningsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      hasMore = all.length > page * PAGE_SIZE;
+      earnings = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    } catch (indexErr) {
+      // Index Firestore composite pas encore déployé — on ne bloque pas tout le
+      // dashboard parrain pour autant, on renvoie juste un historique vide pour l'instant.
+      console.error('referral_earnings query failed (index manquant ?):', indexErr);
+    }
 
     return NextResponse.json({
       success: true,
