@@ -1,11 +1,13 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { VirtualCard, Transaction, Notification } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/date';
 import { getCardTheme, CARD_THEMES } from '@/lib/card-themes';
+import { Accordion } from '@/components/Accordion';
+import { Pagination } from '@/components/Pagination';
 import { Toast } from '@/components/Toast';
 import { NotificationPrompt } from '@/components/NotificationPrompt';
 import { listenForegroundMessages } from '@/lib/messaging';
@@ -132,10 +134,10 @@ function Logo() {
 // ── Nav items ─────────────────────────────────────────────────────
 function navItems(unread: number) {
   return [
-    { id: 'home', label: 'Accueil', icon: <Home size={18} /> },
-    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} /> },
-    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread },
+    { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
+    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread, href: '/dashboard?tab=notifications' },
   ];
 }
 
@@ -150,12 +152,12 @@ function Sidebar({ active, onNav, onLogout, userName, unread }: {
       <div className="py-5 border-b border-white/10"><SidebarLogo /></div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(item => (
-          <button key={item.id} onClick={() => onNav(item.id)}
+          <Link key={item.id} href={item.href} onClick={() => onNav(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
             {item.icon}
             <span className="flex-1">{item.label}</span>
             {item.badge ? <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
-          </button>
+          </Link>
         ))}
       </nav>
 <div className="px-5 py-4 border-t border-white/10">
@@ -196,12 +198,12 @@ function MobileDrawer({ open, onClose, active, onNav, onLogout, userName, unread
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {items.map(item => (
-            <button key={item.id} onClick={() => { onNav(item.id); onClose(); }}
+            <Link key={item.id} href={item.href} onClick={() => { onNav(item.id); onClose(); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-150 text-left ${active === item.id ? 'bg-brand-orange text-white shadow-orange' : 'text-white/60 hover:bg-white/10 hover:text-white'}`}>
               {item.icon}
               <span className="flex-1">{item.label}</span>
               {item.badge ? <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
-            </button>
+            </Link>
           ))}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
@@ -241,21 +243,21 @@ function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }
 // ── Bottom nav (mobile) ───────────────────────────────────────────
 function BottomNav({ active, onNav, unread }: { active: string; onNav: (s: string) => void; unread: number }) {
   const items = [
-    { id: 'home', label: 'Accueil', icon: <Home size={20} /> },
-    { id: 'card', label: 'Cartes', icon: <CreditCard size={20} /> },
-    { id: 'history', label: 'Historique', icon: <TrendingUp size={20} /> },
-    { id: 'notifications', label: 'Alertes', icon: <Bell size={20} />, badge: unread },
+    { id: 'home', label: 'Accueil', icon: <Home size={20} />, href: '/dashboard?tab=home' },
+    { id: 'card', label: 'Cartes', icon: <CreditCard size={20} />, href: '/dashboard?tab=card' },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={20} />, href: '/dashboard?tab=history' },
+    { id: 'notifications', label: 'Alertes', icon: <Bell size={20} />, badge: unread, href: '/dashboard?tab=notifications' },
   ];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-surface-border">
       <div className="grid grid-cols-4 h-16">
         {items.map(item => (
-          <button key={item.id} onClick={() => onNav(item.id)}
+          <Link key={item.id} href={item.href} onClick={() => onNav(item.id)}
             className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${active === item.id ? 'text-brand-orange' : 'text-ink-muted'}`}>
             {item.icon}
             <span className="text-[10px] font-medium">{item.label}</span>
             {item.badge ? <span className="absolute top-2 right-1/4 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{item.badge}</span> : null}
-          </button>
+          </Link>
         ))}
       </div>
     </nav>
@@ -527,36 +529,108 @@ function ReloadModal({ card, onClose, country, getToken }: {
   );
 }
 
+// ── Withdraw modal (Mastercard uniquement) ────────────────────────
+function WithdrawModal({ card, onClose, getToken, onSuccess }: {
+  card: VirtualCard; onClose: () => void; getToken: () => Promise<string>; onSuccess: (msg: string) => void;
+}) {
+  const [amount, setAmount] = useState(5);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const xof = Math.round(amount * 600);
+  const maxAmount = card.balance || 0;
+
+  const handle = async () => {
+    if (amount < 2) { setError('Montant minimum : $2'); return; }
+    if (amount > maxAmount) { setError('Ce montant dépasse le solde disponible sur la carte.'); return; }
+    setLoading(true); setError('');
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/cards/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cardId: card.id, amount }),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.error); setLoading(false); return; }
+      onSuccess(`Retrait initié — vous recevrez environ ${data.data.amountXOF.toLocaleString()} FCFA par Mobile Money sous 24-48h.`);
+      onClose();
+    } catch { setError('Erreur réseau.'); setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
+        <div className="flex justify-between items-start mb-5">
+          <div>
+            <h3 className="font-bold text-xl">Retirer vers Mobile Money</h3>
+            <p className="text-ink-secondary text-sm">Carte •••• {card.last4}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-5 flex items-start gap-2 text-sm text-blue-700">
+          <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+          <span>Le montant est prélevé sur votre carte immédiatement. Le virement Mobile Money est traité manuellement sous 24 à 48h.</span>
+        </div>
+
+        {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Montant à retirer (USD)</label>
+          <input type="number" min={2} step={1} value={amount}
+            onChange={e => setAmount(Number(e.target.value))} className="input-field text-xl font-bold" />
+          <div className="text-ink-muted text-xs mt-1">
+            ≈ {xof.toLocaleString()} FCFA · Solde disponible : ${maxAmount.toFixed(2)}
+          </div>
+        </div>
+
+        <p className="text-ink-muted text-xs mb-5">Des frais de $1 sont appliqués par l'émetteur de la carte sur chaque retrait.</p>
+
+        <button onClick={handle} disabled={loading || amount < 2 || amount > maxAmount} className="btn-primary w-full py-3.5">
+          {loading ? 'Traitement...' : `Retirer $${amount} →`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Transaction item ──────────────────────────────────────────────
 function TxItem({ tx }: { tx: Transaction }) {
   const isCredit = tx.type === 'card_reload';
+  const isWithdrawal = tx.type === 'card_withdrawal';
   return (
     <div className="flex items-center justify-between py-3.5 border-b border-surface-border last:border-0">
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isCredit ? 'bg-brand-green-light' : 'bg-brand-orange-light'}`}>
-          {isCredit ? <ArrowDownLeft size={17} className="text-brand-green" /> : <ArrowUpRight size={17} className="text-brand-orange" />}
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isCredit ? 'bg-brand-green-light' : isWithdrawal ? 'bg-blue-50' : 'bg-brand-orange-light'}`}>
+          {isCredit ? <ArrowDownLeft size={17} className="text-brand-green" />
+            : isWithdrawal ? <ArrowUpRight size={17} className="text-blue-500" />
+            : <ArrowUpRight size={17} className="text-brand-orange" />}
         </div>
         <div>
-          <div className="font-medium text-sm">{tx.type === 'card_purchase' ? 'Achat carte virtuelle' : 'Rechargement carte'}</div>
+          <div className="font-medium text-sm">
+            {tx.type === 'card_purchase' ? 'Achat carte virtuelle' : tx.type === 'card_withdrawal' ? 'Retrait vers Mobile Money' : 'Rechargement carte'}
+          </div>
           <div className="flex items-center gap-1 text-xs text-ink-muted mt-0.5">
-            {tx.status === 'success' ? <CheckCircle size={12} className="text-brand-green" />
+            {tx.status === 'success' || tx.status === 'completed' ? <CheckCircle size={12} className="text-brand-green" />
               : tx.status === 'failed' ? <XCircle size={12} className="text-red-500" />
               : <Clock size={12} className="text-yellow-500" />}
-            {tx.status === 'success' ? 'Confirmé' : tx.status === 'failed' ? 'Échoué' : 'En attente'}
+            {tx.status === 'success' ? 'Confirmé' : tx.status === 'failed' ? 'Échoué' : tx.status === 'completed' ? 'Envoyé' : tx.status === 'pending_payout' ? 'Virement en cours' : 'En attente'}
             {' · '}{formatDate(tx.createdAt, { day: 'numeric', month: 'short' })}
           </div>
         </div>
       </div>
-      <div className={`font-bold text-sm ${isCredit ? 'text-brand-green' : 'text-ink-primary'}`}>
-        {isCredit ? '+' : ''}{tx.amount.toLocaleString()} FCFA
+      <div className={`font-bold text-sm ${isCredit ? 'text-brand-green' : isWithdrawal ? 'text-blue-500' : 'text-ink-primary'}`}>
+        {isCredit ? '+' : isWithdrawal ? '-' : ''}{tx.amount.toLocaleString()} FCFA
       </div>
     </div>
   );
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { appUser, firebaseUser, logout, getToken, loading: authLoading } = useAuth();
 
   const [kyc, setKyc] = useState<KycData | null>(null);
@@ -568,13 +642,32 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [freezeLoading, setFreezeLoading] = useState(false);
-  const [tab, setTab] = useState('home');
+  const validTabs = ['home', 'card', 'history', 'notifications'];
+  const tabParam = searchParams.get('tab') || 'home';
+  const tab = validTabs.includes(tabParam) ? tabParam : 'home';
+  const setTab = (next: string) => router.push(`/dashboard?tab=${next}`, { scroll: false });
   const [showBuy, setShowBuy] = useState(false);
   const [showReload, setShowReload] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [themeLoading, setThemeLoading] = useState<string | null>(null);
+
+  // Historique — pagination + filtres (liste dédiée, distincte de l'aperçu home)
+  const [historyItems, setHistoryItems] = useState<Transaction[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyType, setHistoryType] = useState('all');
+  const [historyStatus, setHistoryStatus] = useState('all');
+
+  // Notifications — pagination + filtre (liste dédiée à l'onglet)
+  const [notifItems, setNotifItems] = useState<Notification[]>([]);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifHasMore, setNotifHasMore] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifFilter, setNotifFilter] = useState('all');
 
   const fetchKyc = useCallback(async () => {
     if (!firebaseUser) return;
@@ -617,6 +710,57 @@ export default function DashboardPage() {
     if (appUser?.role === 'admin') router.push('/admin');
   }, [appUser, router]);
 
+  const fetchHistory = useCallback(async () => {
+    if (!firebaseUser) return;
+    setHistoryLoading(true);
+    try {
+      const token = await getToken();
+      const qs = new URLSearchParams({ page: String(historyPage), type: historyType, status: historyStatus });
+      const res = await fetch(`/api/transactions?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) {
+        setHistoryItems(data.data.items);
+        setHistoryHasMore(data.data.hasMore);
+      }
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [firebaseUser, getToken, historyPage, historyType, historyStatus]);
+
+  useEffect(() => {
+    if (tab === 'history') fetchHistory();
+  }, [tab, fetchHistory]);
+
+  // Revenir à la page 1 quand un filtre change
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historyType, historyStatus]);
+
+  const fetchNotifTab = useCallback(async () => {
+    if (!firebaseUser) return;
+    setNotifLoading(true);
+    try {
+      const token = await getToken();
+      const qs = new URLSearchParams({ page: String(notifPage), filter: notifFilter });
+      const res = await fetch(`/api/notifications?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) {
+        setNotifItems(data.data);
+        setNotifHasMore(data.hasMore);
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [firebaseUser, getToken, notifPage, notifFilter]);
+
+  useEffect(() => {
+    if (tab === 'notifications') fetchNotifTab();
+  }, [tab, fetchNotifTab]);
+
+  useEffect(() => {
+    setNotifPage(1);
+  }, [notifFilter]);
+
   useEffect(() => {
     if (!firebaseUser) return;
     const unsubscribe = listenForegroundMessages((title, body) => {
@@ -627,9 +771,10 @@ export default function DashboardPage() {
   }, [firebaseUser, fetchData]);
 
   const markAsRead = useCallback(async (notifId: string) => {
-    const notif = notifications.find(n => n.id === notifId);
+    const notif = notifications.find(n => n.id === notifId) || notifItems.find(n => n.id === notifId);
     if (!notif || notif.read) return;
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    setNotifItems(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
     try {
       const token = await getToken();
       await fetch('/api/notifications', {
@@ -639,16 +784,20 @@ export default function DashboardPage() {
       });
     } catch {
       setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: false } : n));
+      setNotifItems(prev => prev.map(n => n.id === notifId ? { ...n, read: false } : n));
     }
-  }, [notifications, getToken]);
+  }, [notifications, notifItems, getToken]);
 
   const markAllAsRead = useCallback(async () => {
     const unreadNotifs = notifications.filter(n => !n.read);
-    if (unreadNotifs.length === 0) return;
+    const unreadFromTab = notifItems.filter(n => !n.read);
+    if (unreadNotifs.length === 0 && unreadFromTab.length === 0) return;
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifItems(prev => prev.map(n => ({ ...n, read: true })));
+    const toMark = unreadNotifs.length > 0 ? unreadNotifs : unreadFromTab;
     try {
       const token = await getToken();
-      await Promise.all(unreadNotifs.map(n =>
+      await Promise.all(toMark.map(n =>
         fetch('/api/notifications', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -657,11 +806,15 @@ export default function DashboardPage() {
       ));
     } catch {
       setNotifications(prev => prev.map(n => {
-        const wasUnread = unreadNotifs.find(u => u.id === n.id);
+        const wasUnread = toMark.find(u => u.id === n.id);
+        return wasUnread ? { ...n, read: false } : n;
+      }));
+      setNotifItems(prev => prev.map(n => {
+        const wasUnread = toMark.find(u => u.id === n.id);
         return wasUnread ? { ...n, read: false } : n;
       }));
     }
-  }, [notifications, getToken]);
+  }, [notifications, notifItems, getToken]);
 
   const handleFreeze = async (card: VirtualCard) => {
     setFreezeLoading(true);
@@ -873,8 +1026,7 @@ export default function DashboardPage() {
                     onFreeze={() => handleFreeze(selectedCard)}
                     loading={freezeLoading}
                   />
-                  <div className="card p-5">
-                    <h3 className="font-semibold mb-4">Détails de la carte</h3>
+                  <Accordion title="Détails de la carte">
                     <div className="space-y-3 text-sm">
                       {[
                         ['Type', `${selectedCard.brand.charAt(0).toUpperCase() + selectedCard.brand.slice(1)} Virtuelle`],
@@ -888,10 +1040,8 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div className="card p-5">
-                    <h3 className="font-semibold mb-4">Personnaliser ma carte</h3>
-                    <p className="text-ink-secondary text-xs mb-4">Choisissez le fond qui s'affiche sur votre carte virtuelle.</p>
+                  </Accordion>
+                  <Accordion title="Personnaliser ma carte" subtitle="Choisissez le fond qui s'affiche sur votre carte virtuelle.">
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
                       {CARD_THEMES.map(t => {
                         const isActive = (selectedCard.theme || 'midnight') === t.id;
@@ -919,11 +1069,16 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  </Accordion>
+                  <div className={`grid gap-3 ${selectedCard.brand === 'mastercard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
                       <TrendingUp size={16} /> Recharger
                     </button>
+                    {selectedCard.brand === 'mastercard' && (
+                      <button onClick={() => setShowWithdraw(true)} className="btn-secondary py-3.5">
+                        <ArrowDownLeft size={16} /> Retirer
+                      </button>
+                    )}
                     <button onClick={() => handleFreeze(selectedCard)} disabled={freezeLoading} className="btn-secondary py-3.5">
                       {selectedCard.status === 'frozen'
                         ? <><Sun size={16} /> Dégeler</>
@@ -955,14 +1110,42 @@ export default function DashboardPage() {
       case 'history': return (
         <div className="space-y-5 animate-fade-in">
           <h2 className="text-xl font-bold">Historique des transactions</h2>
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={historyType}
+              onChange={e => setHistoryType(e.target.value)}
+              className="input-field w-auto text-sm py-2"
+            >
+              <option value="all">Tous les types</option>
+              <option value="card_purchase">Achat de carte</option>
+              <option value="card_reload">Recharge</option>
+            </select>
+            <select
+              value={historyStatus}
+              onChange={e => setHistoryStatus(e.target.value)}
+              className="input-field w-auto text-sm py-2"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="success">Réussi</option>
+              <option value="pending">En attente</option>
+              <option value="failed">Échoué</option>
+            </select>
+          </div>
           <div className="card p-5">
-            {transactions.length === 0 ? (
+            {historyLoading ? (
+              <div className="text-center py-10">
+                <Loader2 size={28} className="text-brand-orange mx-auto mb-3 animate-spin" />
+              </div>
+            ) : historyItems.length === 0 ? (
               <div className="text-center py-10">
                 <TrendingUp size={36} className="text-ink-muted mx-auto mb-3" />
                 <p className="text-ink-secondary">Aucune transaction pour l'instant</p>
               </div>
             ) : (
-              transactions.map(tx => <TxItem key={tx.id} tx={tx} />)
+              <>
+                {historyItems.map(tx => <TxItem key={tx.id} tx={tx} />)}
+                <Pagination page={historyPage} hasMore={historyHasMore} onChange={setHistoryPage} loading={historyLoading} />
+              </>
             )}
           </div>
         </div>
@@ -979,14 +1162,26 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-          {notifications.length === 0 ? (
+          <select
+            value={notifFilter}
+            onChange={e => setNotifFilter(e.target.value)}
+            className="input-field w-auto text-sm py-2"
+          >
+            <option value="all">Toutes</option>
+            <option value="unread">Non lues</option>
+          </select>
+          {notifLoading ? (
+            <div className="card p-8 text-center">
+              <Loader2 size={28} className="text-brand-orange mx-auto animate-spin" />
+            </div>
+          ) : notifItems.length === 0 ? (
             <div className="card p-8 text-center">
               <Bell size={36} className="text-ink-muted mx-auto mb-3" />
               <p className="text-ink-secondary">Aucune notification</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {notifications.map(n => (
+              {notifItems.map(n => (
                 <div key={n.id} onClick={() => markAsRead(n.id)}
                   className={`card p-4 transition-all select-none ${!n.read ? 'border-l-4 border-brand-orange cursor-pointer hover:shadow-card-hover active:scale-[0.99]' : 'opacity-75'}`}>
                   <div className="flex items-start gap-3">
@@ -1004,6 +1199,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+              <Pagination page={notifPage} hasMore={notifHasMore} onChange={setNotifPage} loading={notifLoading} />
             </div>
           )}
         </div>
@@ -1044,8 +1240,30 @@ export default function DashboardPage() {
           getToken={getToken}
         />
       )}
+      {showWithdraw && selectedCard && (
+        <WithdrawModal
+          card={selectedCard}
+          onClose={() => setShowWithdraw(false)}
+          getToken={getToken}
+          onSuccess={(msg) => { setToast({ message: msg, type: 'success' }); fetchData(); }}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-surface-bg">
+        <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center animate-pulse-soft">
+          <CreditCard size={22} className="text-white" />
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }

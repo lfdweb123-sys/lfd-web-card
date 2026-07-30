@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatDateTime } from '@/lib/date';
+import { Pagination } from '@/components/Pagination';
 import {
   Shield, CheckCircle, XCircle, Clock, Eye, X,
   User, Search, RefreshCw, ChevronLeft, AlertCircle,
@@ -341,17 +342,24 @@ export default function AdminKycPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   const fetchEntries = useCallback(async () => {
     if (!firebaseUser) return;
     setLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch(`/api/admin/kyc?status=${filter}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/kyc?status=${filter}&page=${page}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (data.success) setEntries(data.data);
+      if (data.success) {
+        setEntries(data.data);
+        setHasMore(!!data.hasMore);
+      }
     } finally { setLoading(false); }
-  }, [firebaseUser, getToken, filter]);
+  }, [firebaseUser, getToken, filter, page]);
+
+  useEffect(() => { setPage(1); }, [filter]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -483,6 +491,9 @@ export default function AdminKycPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="px-4">
+                <Pagination page={page} hasMore={hasMore} onChange={setPage} loading={loading} />
               </div>
             </div>
           )}

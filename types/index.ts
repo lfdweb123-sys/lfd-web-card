@@ -1,7 +1,7 @@
 export type UserRole = 'user' | 'admin';
 export type CardStatus = 'pending' | 'active' | 'frozen' | 'terminated';
-export type TransactionType = 'card_purchase' | 'card_reload' | 'refund';
-export type TransactionStatus = 'pending' | 'success' | 'failed' | 'error';
+export type TransactionType = 'card_purchase' | 'card_reload' | 'card_withdrawal' | 'refund';
+export type TransactionStatus = 'pending' | 'success' | 'failed' | 'error' | 'pending_payout' | 'completed';
 export type CardBrand = 'mastercard' | 'visa';
 
 export interface AppUser {

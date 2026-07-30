@@ -63,10 +63,10 @@ function Logo() {
 // ── Sidebar ───────────────────────────────────────────────────────
 function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: string }) {
   const items = [
-    { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard' },
-    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard' },
-    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard' },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard' },
+    { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
+    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
   ];
   return (
     <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
@@ -101,14 +101,21 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
 }
 
 // ── Mobile top bar ────────────────────────────────────────────────
-function MobileTopBar({ onMenu }: { onMenu: () => void }) {
+function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }) {
   return (
     <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-white border-b border-surface-border px-4 h-14 flex items-center justify-between">
       <button onClick={onMenu} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
         <Menu size={18} />
       </button>
       <Logo />
-      <div className="w-9" />
+      <Link href="/dashboard?tab=notifications" className="relative w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
+        <Bell size={16} />
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </Link>
     </div>
   );
 }
@@ -118,10 +125,10 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
   open: boolean; onClose: () => void; onLogout: () => void; userName: string;
 }) {
   const items = [
-    { label: 'Accueil', icon: <Home size={18} />, href: '/dashboard' },
-    { label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard' },
-    { label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard' },
-    { label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard' },
+    { label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
+    { label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
+    { label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
   ];
   if (!open) return null;
   return (
@@ -241,6 +248,9 @@ export default function ProfilePage() {
   // Toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Notifications (badge sur la barre mobile)
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // ── Init ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authLoading && !firebaseUser) { router.push('/auth/login'); return; }
@@ -250,6 +260,19 @@ export default function ProfilePage() {
       setCountry(appUser.country || '');
     }
   }, [firebaseUser, appUser, authLoading, router]);
+
+  // ── Fetch unread notifications count ───────────────────────────
+  useEffect(() => {
+    if (!firebaseUser) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.success) setUnreadCount(data.data.filter((n: { read: boolean }) => !n.read).length);
+      } catch { /* non bloquant */ }
+    })();
+  }, [firebaseUser, getToken]);
 
   // ── Fetch KYC ───────────────────────────────────────────────────
   useEffect(() => {
@@ -357,7 +380,7 @@ export default function ProfilePage() {
   return (
     <div className="stripes-light min-h-screen">
       <Sidebar onLogout={logout} userName={userName} />
-      <MobileTopBar onMenu={() => setDrawerOpen(true)} />
+      <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unreadCount} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onLogout={logout} userName={userName} />
 
       <div className="main-with-sidebar">

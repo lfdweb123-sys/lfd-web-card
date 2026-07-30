@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatDateTime } from '@/lib/date';
 import { Logo as LogoComponent } from '@/components/Logo';
+import { Pagination } from '@/components/Pagination';
 import { SidebarLogo } from '@/components/SidebarLogo';
 import {
-  Users, CreditCard, TrendingUp, Activity, LogOut, Shield,
+  Users, CreditCard, TrendingUp, Activity, LogOut, Shield, Loader2,
   CheckCircle, Ban, UserCheck, Search, Home,
-  RefreshCw, ClipboardList, Menu, X
+  RefreshCw, ClipboardList, Menu, X, ArrowDownLeft, Send
 } from 'lucide-react';
 
 interface AdminStats {
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { id: 'overview', label: "Vue d'ensemble", icon: <Home size={18} /> },
   { id: 'users', label: 'Utilisateurs', icon: <Users size={18} /> },
   { id: 'transactions', label: 'Transactions', icon: <TrendingUp size={18} /> },
+  { id: 'withdrawals', label: 'Retraits', icon: <ArrowDownLeft size={18} /> },
 ];
 
 // ── Sidebar desktop ───────────────────────────────────────────────
@@ -148,8 +150,9 @@ function BottomNav({ active, onNav }: { active: string; onNav: (s: string) => vo
 }
 
 function TxBadge({ s }: { s: string }) {
-  if (s === 'success') return <span className="badge-green">✓ Succès</span>;
+  if (s === 'success' || s === 'completed') return <span className="badge-green">✓ Succès</span>;
   if (s === 'failed') return <span className="badge-red">✗ Échoué</span>;
+  if (s === 'pending_payout') return <span className="badge-orange">◷ Virement en cours</span>;
   return <span className="badge-orange">◷ Attente</span>;
 }
 
@@ -161,6 +164,27 @@ export default function AdminPage() {
   const [tab, setTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PAGE_SIZE = 10;
+
+  // Onglet Transactions — liste dédiée paginée (distincte de l'aperçu overview)
+  const [txItems, setTxItems] = useState<AdminTx[]>([]);
+  const [txPage, setTxPage] = useState(1);
+  const [txHasMore, setTxHasMore] = useState(false);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txType, setTxType] = useState('all');
+  const [txStatus, setTxStatus] = useState('all');
+
+  // Onglet Retraits
+  const [withdrawals, setWithdrawals] = useState<{ id: string; userId: string; cardId: string; amountUSD: number; amount: number; createdAt: string; status: string }[]>([]);
+  const [wdPage, setWdPage] = useState(1);
+  const [wdHasMore, setWdHasMore] = useState(false);
+  const [wdLoading, setWdLoading] = useState(false);
+  const [wdStatusFilter, setWdStatusFilter] = useState('pending_payout');
+  const [wdActionId, setWdActionId] = useState<string | null>(null);
+  const [wdReference, setWdReference] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
@@ -209,9 +233,78 @@ export default function AdminPage() {
   };
 
   const filtered = users.filter(u =>
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    u.displayName?.toLowerCase().includes(search.toLowerCase())
+    (u.email?.toLowerCase().includes(search.toLowerCase()) ||
+     u.displayName?.toLowerCase().includes(search.toLowerCase())) &&
+    (userStatusFilter === 'all' || u.status === userStatusFilter) &&
+    (userRoleFilter === 'all' || u.role === userRoleFilter)
   );
+  const pagedUsers = filtered.slice((userPage - 1) * USERS_PAGE_SIZE, userPage * USERS_PAGE_SIZE);
+  const usersHasMore = filtered.length > userPage * USERS_PAGE_SIZE;
+
+  useEffect(() => { setUserPage(1); }, [search, userStatusFilter, userRoleFilter]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!firebaseUser) return;
+    setTxLoading(true);
+    try {
+      const token = await firebaseUser.getIdToken(true);
+      const qs = new URLSearchParams({ page: String(txPage), type: txType, status: txStatus });
+      const res = await fetch(`/api/admin/transactions?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) {
+        setTxItems(data.data.items);
+        setTxHasMore(data.data.hasMore);
+      }
+    } finally {
+      setTxLoading(false);
+    }
+  }, [firebaseUser, txPage, txType, txStatus]);
+
+  useEffect(() => {
+    if (tab === 'transactions') fetchTransactions();
+  }, [tab, fetchTransactions]);
+
+  useEffect(() => { setTxPage(1); }, [txType, txStatus]);
+
+  const fetchWithdrawals = useCallback(async () => {
+    if (!firebaseUser) return;
+    setWdLoading(true);
+    try {
+      const token = await firebaseUser.getIdToken(true);
+      const qs = new URLSearchParams({ page: String(wdPage), status: wdStatusFilter });
+      const res = await fetch(`/api/admin/withdrawals?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) {
+        setWithdrawals(data.data.items);
+        setWdHasMore(data.data.hasMore);
+      }
+    } finally {
+      setWdLoading(false);
+    }
+  }, [firebaseUser, wdPage, wdStatusFilter]);
+
+  useEffect(() => {
+    if (tab === 'withdrawals') fetchWithdrawals();
+  }, [tab, fetchWithdrawals]);
+
+  useEffect(() => { setWdPage(1); }, [wdStatusFilter]);
+
+  const markWithdrawalPaid = async (transactionId: string) => {
+    setWdActionId(transactionId);
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/withdrawals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ transactionId, payoutReference: wdReference[transactionId] || undefined }),
+      });
+      const data = await res.json();
+      if (data.success) { setMsg('Retrait marqué comme payé ✅'); await fetchWithdrawals(); setTimeout(() => setMsg(''), 3000); }
+      else setError(data.error || 'Erreur');
+    } finally {
+      setWdActionId(null);
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-surface-bg">
@@ -284,7 +377,7 @@ export default function AdminPage() {
                       {stats.recentTransactions.map(tx => (
                         <tr key={tx.id} className="border-t border-surface-border">
                           <td className="py-3 font-mono text-xs text-ink-muted">{tx.id.slice(0, 8)}…</td>
-                          <td className="py-3">{tx.type === 'card_purchase' ? '🃏 Achat' : '💳 Rechargement'}</td>
+                          <td className="py-3">{tx.type === 'card_purchase' ? '🃏 Achat' : tx.type === 'card_withdrawal' ? '💸 Retrait' : '💳 Rechargement'}</td>
                           <td className="py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
                           <td className="py-3"><TxBadge s={tx.status} /></td>
                           <td className="py-3 text-ink-muted">{formatDate(tx.createdAt)}</td>
@@ -317,10 +410,22 @@ export default function AdminPage() {
           </div>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-sm">{error}</div>}
           {msg && <div className="bg-brand-green-light border border-brand-green/20 text-green-700 rounded-2xl p-3.5 text-sm flex items-center gap-2"><CheckCircle size={15} />{msg}</div>}
-          <div className="relative">
-            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <input type="text" placeholder="Rechercher..." value={search}
-              onChange={e => setSearch(e.target.value)} className="input-field pl-10" />
+          <div className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
+              <input type="text" placeholder="Rechercher..." value={search}
+                onChange={e => setSearch(e.target.value)} className="input-field pl-10" />
+            </div>
+            <select value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)} className="input-field w-auto text-sm">
+              <option value="all">Tous les statuts</option>
+              <option value="active">Actif</option>
+              <option value="suspended">Suspendu</option>
+            </select>
+            <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)} className="input-field w-auto text-sm">
+              <option value="all">Tous les rôles</option>
+              <option value="user">Utilisateur</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
@@ -335,7 +440,7 @@ export default function AdminPage() {
                   {filtered.length === 0 && (
                     <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted">Aucun utilisateur trouvé</td></tr>
                   )}
-                  {filtered.map(u => (
+                  {pagedUsers.map(u => (
                     <tr key={u.id} className="border-t border-surface-border hover:bg-surface-muted/50">
                       <td className="px-4 py-3">
                         <div className="font-medium">{u.displayName || '—'}</div>
@@ -366,13 +471,30 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+            <div className="px-4">
+              <Pagination page={userPage} hasMore={usersHasMore} onChange={setUserPage} />
+            </div>
           </div>
         </div>
       );
 
-      case 'transactions': return stats ? (
+      case 'transactions': return (
         <div className="space-y-5 animate-fade-in">
           <h1 className="text-2xl font-bold">Transactions</h1>
+          <div className="flex flex-wrap gap-2">
+            <select value={txType} onChange={e => setTxType(e.target.value)} className="input-field w-auto text-sm">
+              <option value="all">Tous les types</option>
+              <option value="card_purchase">Achat de carte</option>
+              <option value="card_reload">Recharge</option>
+              <option value="card_withdrawal">Retrait</option>
+            </select>
+            <select value={txStatus} onChange={e => setTxStatus(e.target.value)} className="input-field w-auto text-sm">
+              <option value="all">Tous les statuts</option>
+              <option value="success">Réussi</option>
+              <option value="pending">En attente</option>
+              <option value="failed">Échoué</option>
+            </select>
+          </div>
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -383,13 +505,14 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentTransactions.length === 0 && (
+                  {txLoading ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+                  ) : txItems.length === 0 ? (
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted">Aucune transaction</td></tr>
-                  )}
-                  {stats.recentTransactions.map(tx => (
+                  ) : txItems.map(tx => (
                     <tr key={tx.id} className="border-t border-surface-border hover:bg-surface-muted/50">
                       <td className="px-4 py-3 font-mono text-xs text-ink-muted">{tx.id.slice(0, 12)}…</td>
-                      <td className="px-4 py-3">{tx.type === 'card_purchase' ? '🃏 Achat carte' : '💳 Rechargement'}</td>
+                      <td className="px-4 py-3">{tx.type === 'card_purchase' ? '🃏 Achat carte' : tx.type === 'card_withdrawal' ? '💸 Retrait' : '💳 Rechargement'}</td>
                       <td className="px-4 py-3 font-medium">{tx.amount?.toLocaleString()} FCFA</td>
                       <td className="px-4 py-3"><TxBadge s={tx.status} /></td>
                       <td className="px-4 py-3 text-ink-muted">{formatDateTime(tx.createdAt)}</td>
@@ -398,9 +521,72 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+            <div className="px-4">
+              <Pagination page={txPage} hasMore={txHasMore} onChange={setTxPage} loading={txLoading} />
+            </div>
           </div>
         </div>
-      ) : null;
+      );
+
+      case 'withdrawals': return (
+        <div className="space-y-5 animate-fade-in">
+          <h1 className="text-2xl font-bold">Retraits</h1>
+          <p className="text-ink-secondary text-sm -mt-3">
+            Retraits Mastercard traités par l'émetteur — l'argent arrive dans notre wallet, à vous d'envoyer le Mobile Money au client.
+          </p>
+          <select value={wdStatusFilter} onChange={e => setWdStatusFilter(e.target.value)} className="input-field w-auto text-sm">
+            <option value="pending_payout">En attente de virement</option>
+            <option value="completed">Payés</option>
+          </select>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted">
+                  <tr className="text-ink-secondary text-left">
+                    {['Utilisateur', 'Montant', 'Date', 'Référence', 'Action'].map(h =>
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {wdLoading ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+                  ) : withdrawals.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted">Aucun retrait {wdStatusFilter === 'pending_payout' ? 'en attente' : 'payé'}</td></tr>
+                  ) : withdrawals.map(w => (
+                    <tr key={w.id} className="border-t border-surface-border hover:bg-surface-muted/50">
+                      <td className="px-4 py-3 font-mono text-xs text-ink-muted">{w.userId.slice(0, 12)}…</td>
+                      <td className="px-4 py-3 font-medium">${w.amountUSD} <span className="text-ink-muted font-normal">(~{w.amount?.toLocaleString()} FCFA)</span></td>
+                      <td className="px-4 py-3 text-ink-muted">{formatDateTime(w.createdAt)}</td>
+                      <td className="px-4 py-3">
+                        {w.status === 'pending_payout' ? (
+                          <input
+                            type="text"
+                            placeholder="Réf. Mobile Money"
+                            value={wdReference[w.id] || ''}
+                            onChange={e => setWdReference(prev => ({ ...prev, [w.id]: e.target.value }))}
+                            className="input-field text-xs py-1.5 px-2 w-36"
+                          />
+                        ) : <span className="text-ink-muted text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {w.status === 'pending_payout' ? (
+                          <button onClick={() => markWithdrawalPaid(w.id)} disabled={wdActionId === w.id}
+                            className="inline-flex items-center gap-1.5 text-brand-green text-xs font-medium hover:underline disabled:opacity-50">
+                            <Send size={13} />{wdActionId === w.id ? 'Envoi...' : 'Marquer payé'}
+                          </button>
+                        ) : <span className="badge-green">Payé</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4">
+              <Pagination page={wdPage} hasMore={wdHasMore} onChange={setWdPage} loading={wdLoading} />
+            </div>
+          </div>
+        </div>
+      );
     }
   };
 

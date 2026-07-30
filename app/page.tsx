@@ -845,8 +845,8 @@ function Footer() {
   const isLoggedIn = !!firebaseUser;
 
   return (
-    <footer className="bg-white border-t border-surface-border py-12 px-5 sm:px-6">
-      <div className="max-w-6xl mx-auto">
+    <footer className="bg-white border-t border-surface-border py-12 px-5 sm:px-8 lg:px-12 xl:px-16">
+      <div className="w-full">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 text-sm">
           {/* Brand */}
           <div>

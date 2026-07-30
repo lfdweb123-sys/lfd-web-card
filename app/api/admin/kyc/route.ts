@@ -11,21 +11,25 @@ export async function GET(req: NextRequest) {
     await requireAdmin(req);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'pending';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const PAGE_SIZE = 15;
 
     const snap = await adminDb.collection('kyc')
       .where('status', '==', status)
       .orderBy('updatedAt', 'desc')
-      .limit(50)
+      .limit(page * PAGE_SIZE + 1)
       .get();
 
     // Ne jamais retourner les images au listing
-    const list = snap.docs.map(d => {
+    const all = snap.docs.map(d => {
       const { images: _images, ...safe } = d.data();
       void _images;
       return { id: d.id, ...safe };
     });
+    const hasMore = all.length > page * PAGE_SIZE;
+    const list = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-    return NextResponse.json({ success: true, data: list });
+    return NextResponse.json({ success: true, data: list, page, hasMore });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur';
     if (msg === 'UNAUTHORIZED') return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
