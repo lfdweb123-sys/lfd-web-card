@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     await adminDb.collection('referrers').doc(userRecord.uid).set({
       name, email, promoCode: code, commissionPerReload,
-      totalReferred: 0, totalEarningsXOF: 0, active: true,
+      totalReferred: 0, totalEarningsXOF: 0, unpaidXOF: 0, active: true,
       createdAt: new Date().toISOString(),
     });
 

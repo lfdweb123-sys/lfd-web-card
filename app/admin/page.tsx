@@ -191,7 +191,7 @@ export default function AdminPage() {
   // Onglet Parrains
   const [referrers, setReferrers] = useState<{
     id: string; name: string; email: string; promoCode: string;
-    commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; active: boolean;
+    commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; unpaidXOF: number; active: boolean;
   }[]>([]);
   const [refPage, setRefPage] = useState(1);
   const [refHasMore, setRefHasMore] = useState(false);
@@ -201,6 +201,10 @@ export default function AdminPage() {
   const [referrerForm, setReferrerForm] = useState({ name: '', email: '', password: '', promoCode: '', commissionPerReload: 25 });
   const [referrerActionLoading, setReferrerActionLoading] = useState(false);
   const [referrerError, setReferrerError] = useState('');
+  const [payoutTarget, setPayoutTarget] = useState<{ id: string; name: string; unpaidXOF: number } | null>(null);
+  const [payoutReference, setPayoutReference] = useState('');
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutError, setPayoutError] = useState('');
 
   // Onglet Messages (diffusion email/push)
   const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'selected'>('all');
@@ -413,6 +417,29 @@ export default function AdminPage() {
       else setError(data.error || 'Erreur');
     } finally {
       setReferrerActionLoading(false);
+    }
+  };
+
+  const handlePayReferrer = async () => {
+    if (!payoutTarget) return;
+    setPayoutLoading(true);
+    setPayoutError('');
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/referral-payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ referrerId: payoutTarget.id, payoutReference: payoutReference || undefined }),
+      });
+      const data = await res.json();
+      if (!data.success) { setPayoutError(data.error || 'Erreur'); return; }
+      setMsg(`Paiement de ${data.data.amountPaidXOF.toLocaleString()} FCFA enregistré ✅`);
+      setPayoutTarget(null);
+      setPayoutReference('');
+      await fetchReferrers();
+      setTimeout(() => setMsg(''), 3000);
+    } finally {
+      setPayoutLoading(false);
     }
   };
 
@@ -758,15 +785,15 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
                   <tr className="text-ink-secondary text-left">
-                    {['Parrain', 'Code', 'Commission', 'Filleuls', 'Gains', 'Statut', 'Actions'].map(h =>
+                    {['Parrain', 'Code', 'Commission', 'Filleuls', 'Gains totaux', 'En attente', 'Statut', 'Actions'].map(h =>
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {refLoading ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
                   ) : referrers.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-muted">Aucun parrain pour l'instant</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-muted">Aucun parrain pour l'instant</td></tr>
                   ) : referrers.map(r => (
                     <tr key={r.id} className="border-t border-surface-border hover:bg-surface-muted/50">
                       <td className="px-4 py-3">
@@ -791,15 +818,30 @@ export default function AdminPage() {
                       <td className="px-4 py-3">{r.totalReferred}</td>
                       <td className="px-4 py-3 font-medium">{r.totalEarningsXOF.toLocaleString()} FCFA</td>
                       <td className="px-4 py-3">
+                        {r.unpaidXOF > 0 ? (
+                          <span className="font-semibold text-yellow-700">{r.unpaidXOF.toLocaleString()} FCFA</span>
+                        ) : (
+                          <span className="text-ink-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={r.active ? 'badge-green' : 'badge-red'}>{r.active ? '● Actif' : '⊘ Désactivé'}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {r.active && (
-                          <button onClick={() => handleDeactivateReferrer(r.id)} disabled={referrerActionLoading}
-                            className="inline-flex items-center gap-1.5 text-red-500 text-xs font-medium hover:underline disabled:opacity-50">
-                            <Power size={13} /> Désactiver
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {r.unpaidXOF > 0 && (
+                            <button onClick={() => { setPayoutTarget({ id: r.id, name: r.name, unpaidXOF: r.unpaidXOF }); setPayoutError(''); }}
+                              className="inline-flex items-center gap-1.5 text-brand-green text-xs font-medium hover:underline">
+                              <Send size={13} /> Payer
+                            </button>
+                          )}
+                          {r.active && (
+                            <button onClick={() => handleDeactivateReferrer(r.id)} disabled={referrerActionLoading}
+                              className="inline-flex items-center gap-1.5 text-red-500 text-xs font-medium hover:underline disabled:opacity-50">
+                              <Power size={13} /> Désactiver
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -967,6 +1009,34 @@ export default function AdminPage() {
                 {referrerActionLoading ? 'Création...' : 'Créer le parrain'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {payoutTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
+            <div className="flex justify-between items-start mb-5">
+              <h3 className="font-bold text-xl">Payer {payoutTarget.name}</h3>
+              <button onClick={() => setPayoutTarget(null)} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+            </div>
+            <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-ink-secondary">Montant à envoyer</span>
+                <span className="font-bold text-brand-orange">{payoutTarget.unpaidXOF.toLocaleString()} FCFA</span>
+              </div>
+            </div>
+            <p className="text-ink-secondary text-xs mb-4">
+              Envoyez d'abord le Mobile Money vous-même, puis confirmez ici pour marquer les gains comme payés et notifier le parrain par email.
+            </p>
+            {payoutError && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{payoutError}</div>}
+            <div className="mb-5">
+              <label className="block text-sm font-medium mb-1.5">Référence Mobile Money (optionnel)</label>
+              <input type="text" value={payoutReference} onChange={e => setPayoutReference(e.target.value)} className="input-field" placeholder="Ex : MTN-XXXXXX" />
+            </div>
+            <button onClick={handlePayReferrer} disabled={payoutLoading} className="btn-primary w-full py-3.5">
+              {payoutLoading ? 'Confirmation...' : 'Confirmer le paiement envoyé'}
+            </button>
           </div>
         </div>
       )}

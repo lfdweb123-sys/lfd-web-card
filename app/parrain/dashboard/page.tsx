@@ -11,9 +11,9 @@ import {
 
 interface ReferrerData {
   id: string; name: string; email: string; promoCode: string;
-  commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; active: boolean;
+  commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; unpaidXOF: number; active: boolean;
 }
-interface Earning { id: string; amountXOF: number; createdAt: string; }
+interface Earning { id: string; amountXOF: number; paid: boolean; createdAt: string; }
 
 export default function ParrainDashboardPage() {
   const router = useRouter();
@@ -119,22 +119,35 @@ export default function ParrainDashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="card p-5">
-            <div className="w-10 h-10 bg-brand-orange-light rounded-2xl flex items-center justify-center mb-3">
-              <Users size={18} className="text-brand-orange" />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card p-4">
+            <div className="w-9 h-9 bg-brand-orange-light rounded-2xl flex items-center justify-center mb-2.5">
+              <Users size={16} className="text-brand-orange" />
             </div>
-            <div className="text-2xl font-bold">{referrer?.totalReferred ?? 0}</div>
-            <div className="text-ink-secondary text-xs">Filleuls inscrits</div>
+            <div className="text-xl font-bold">{referrer?.totalReferred ?? 0}</div>
+            <div className="text-ink-secondary text-xs">Filleuls</div>
           </div>
-          <div className="card p-5">
-            <div className="w-10 h-10 bg-brand-green-light rounded-2xl flex items-center justify-center mb-3">
-              <TrendingUp size={18} className="text-brand-green" />
+          <div className="card p-4">
+            <div className="w-9 h-9 bg-brand-green-light rounded-2xl flex items-center justify-center mb-2.5">
+              <Check size={16} className="text-brand-green" />
             </div>
-            <div className="text-2xl font-bold">{(referrer?.totalEarningsXOF ?? 0).toLocaleString()} <span className="text-sm font-medium text-ink-secondary">FCFA</span></div>
-            <div className="text-ink-secondary text-xs">Gains cumulés</div>
+            <div className="text-xl font-bold">{((referrer?.totalEarningsXOF ?? 0) - (referrer?.unpaidXOF ?? 0)).toLocaleString()}</div>
+            <div className="text-ink-secondary text-xs">FCFA déjà payés</div>
+          </div>
+          <div className="card p-4">
+            <div className="w-9 h-9 bg-yellow-50 rounded-2xl flex items-center justify-center mb-2.5">
+              <TrendingUp size={16} className="text-yellow-600" />
+            </div>
+            <div className="text-xl font-bold">{(referrer?.unpaidXOF ?? 0).toLocaleString()}</div>
+            <div className="text-ink-secondary text-xs">FCFA en attente</div>
           </div>
         </div>
+
+        {(referrer?.unpaidXOF ?? 0) > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-2xl p-4 text-sm">
+            Vos gains en attente vous seront envoyés par Mobile Money par l'équipe LFD WEB CARD. Vous recevrez un email de confirmation dès l'envoi.
+          </div>
+        )}
 
         <div className="card p-4 flex items-center gap-2 text-sm text-ink-secondary">
           <Gift size={15} className="text-brand-orange flex-shrink-0" />
@@ -155,8 +168,13 @@ export default function ParrainDashboardPage() {
                       <div className="w-9 h-9 bg-brand-green-light rounded-2xl flex items-center justify-center">
                         <ArrowUpRight size={15} className="text-brand-green" />
                       </div>
-                      <div className="text-sm text-ink-secondary">
-                        Rechargement d'un filleul · {new Date(e.createdAt).toLocaleDateString('fr-FR')}
+                      <div>
+                        <div className="text-sm text-ink-secondary">
+                          Rechargement d'un filleul · {new Date(e.createdAt).toLocaleDateString('fr-FR')}
+                        </div>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${e.paid ? 'bg-brand-green-light text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                          {e.paid ? 'Payé' : 'En attente'}
+                        </span>
                       </div>
                     </div>
                     <div className="font-bold text-brand-green text-sm">+{e.amountXOF.toLocaleString()} FCFA</div>

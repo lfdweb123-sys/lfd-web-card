@@ -70,6 +70,7 @@ export interface Referrer {
   commissionPerReload: number; // en FCFA
   totalReferred: number;
   totalEarningsXOF: number;
+  unpaidXOF: number;
   active: boolean;
   createdAt: string;
 }
@@ -80,5 +81,7 @@ export interface ReferralEarning {
   referredUserId: string;
   transactionId: string;
   amountXOF: number;
+  paid: boolean;
+  paidAt: string | null;
   createdAt: string;
 }

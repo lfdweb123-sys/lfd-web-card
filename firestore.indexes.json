@@ -223,6 +223,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "referral_earnings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "referrerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paid",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

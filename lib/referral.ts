@@ -32,10 +32,15 @@ export async function creditReferralCommission(userId: string, transactionId: st
       referredUserId: userId,
       transactionId,
       amountXOF,
+      paid: false,
+      paidAt: null,
       createdAt: new Date().toISOString(),
     });
 
-    await referrerDoc.ref.update({ totalEarningsXOF: FieldValue.increment(amountXOF) });
+    await referrerDoc.ref.update({
+      totalEarningsXOF: FieldValue.increment(amountXOF),
+      unpaidXOF: FieldValue.increment(amountXOF),
+    });
   } catch (err) {
     console.error('creditReferralCommission error:', err);
   }
