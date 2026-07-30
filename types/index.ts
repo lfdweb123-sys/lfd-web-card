@@ -14,6 +14,7 @@ export interface AppUser {
   status: 'active' | 'suspended';
   createdAt: string;
   referredBy?: string;
+  kycRequired?: boolean;
 }
 
 export interface VirtualCard {

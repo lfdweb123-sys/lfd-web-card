@@ -10,7 +10,7 @@ import { SidebarLogo } from '@/components/SidebarLogo';
 import {
   Users, CreditCard, TrendingUp, Activity, LogOut, Shield, Loader2,
   CheckCircle, Ban, UserCheck, Search, Home,
-  RefreshCw, ClipboardList, Menu, X, ArrowDownLeft, Send, Gift, MessageSquare, Plus, Edit3, Power, Mail, Bell
+  RefreshCw, ClipboardList, Menu, X, ArrowDownLeft, Send, Gift, MessageSquare, Plus, Edit3, Power, Mail, Bell, ShieldAlert, ShieldOff
 } from 'lucide-react';
 
 interface AdminStats {
@@ -20,6 +20,7 @@ interface AdminStats {
 interface AdminUser {
   id: string; email: string; displayName: string;
   role: string; status: string; country: string; createdAt: string;
+  kycRequired?: boolean;
 }
 interface AdminTx { id: string; type: string; amount: number; status: string; createdAt: string; }
 
@@ -633,9 +634,12 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-ink-secondary">{u.country || '—'}</td>
                       <td className="px-4 py-3"><span className={u.role === 'admin' ? 'badge-orange' : 'badge-gray'}>{u.role}</span></td>
                       <td className="px-4 py-3">
-                        <span className={u.status === 'active' ? 'badge-green' : 'badge-red'}>
-                          {u.status === 'active' ? '● Actif' : '⊘ Suspendu'}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={u.status === 'active' ? 'badge-green' : 'badge-red'}>
+                            {u.status === 'active' ? '● Actif' : '⊘ Suspendu'}
+                          </span>
+                          {u.kycRequired && <span className="badge-orange text-[10px]">KYC requis</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-ink-muted">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3">
@@ -648,6 +652,13 @@ export default function AdminPage() {
                           {u.role !== 'admin' &&
                             <button onClick={() => userAction(u.id, 'make_admin')} disabled={!!actionLoading}
                               className="p-1.5 text-brand-orange hover:bg-brand-orange-light rounded-lg" title="Promouvoir admin"><Shield size={14} /></button>}
+                          {u.kycRequired ? (
+                            <button onClick={() => userAction(u.id, 'unrequire_kyc')} disabled={!!actionLoading}
+                              className="p-1.5 text-ink-secondary hover:bg-surface-muted rounded-lg" title="Retirer l'obligation de KYC"><ShieldOff size={14} /></button>
+                          ) : (
+                            <button onClick={() => userAction(u.id, 'require_kyc')} disabled={!!actionLoading}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Exiger la vérification d'identité (activité suspecte)"><ShieldAlert size={14} /></button>
+                          )}
                         </div>
                       </td>
                     </tr>

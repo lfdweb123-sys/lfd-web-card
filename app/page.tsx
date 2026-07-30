@@ -363,11 +363,20 @@ function Hero() {
             )}
           </h1>
 
-          <p className="text-ink-secondary text-lg leading-relaxed mb-8 max-w-lg">
+          <p className="text-ink-secondary text-lg leading-relaxed mb-5 max-w-lg">
             {isLoggedIn
               ? 'Gérez votre carte, consultez vos transactions et rechargez votre solde depuis votre tableau de bord.'
               : 'Payez sur Amazon, Netflix, Alibaba et partout dans le monde. Obtenez votre carte Visa ou Mastercard virtuelle instantanément après paiement Mobile Money.'}
           </p>
+
+          {!isLoggedIn && (
+            <div className="flex items-start gap-2.5 bg-brand-green-light/60 border border-brand-green/20 rounded-2xl px-4 py-3 mb-6 max-w-lg">
+              <Shield size={16} className="text-brand-green flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-ink-secondary leading-snug">
+                <strong className="text-ink-primary">Vérifiez votre identité (optionnel).</strong> La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3 mb-7">
             {isLoggedIn ? (

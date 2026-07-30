@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/date';
+import { Logo as LogoComponent } from '@/components/Logo';
+import { SidebarLogo } from '@/components/SidebarLogo';
 import {
   Shield, CheckCircle, Clock, XCircle, ArrowRight,
   Upload, Camera, CreditCard, Zap, AlertCircle,
-  RefreshCw, ChevronRight, X, Eye
+  RefreshCw, ChevronRight, X, Eye,
+  Home, TrendingUp, Bell, Menu, User, LogOut,
 } from 'lucide-react';
 
 type KycStatus = 'approved' | 'rejected' | 'pending' | 'in_review' | null;
@@ -172,12 +175,128 @@ function StatusBanner({ kyc }: { kyc: KycData }) {
 }
 
 // ── Main KYC Page ────────────────────────────────────────────────
+// ── Logo ──────────────────────────────────────────────────────────
+function Logo() {
+  return <LogoComponent />;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────
+function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: string }) {
+  const items = [
+    { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
+    { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
+  ];
+  return (
+    <aside className="sidebar-fixed hidden md:flex flex-col stripes-dark text-white border-r-0">
+      <div className="py-5 border-b border-white/10"><SidebarLogo /></div>
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {items.map(item => (
+          <Link key={item.id} href={item.href}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-all duration-150">
+            {item.icon}
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+      <div className="px-5 py-4 border-t border-white/10">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center flex-shrink-0">
+            <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium truncate">{userName}</div>
+          </div>
+        </div>
+        <Link href="/profile"
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors mb-1">
+          <User size={16} /> Mon profil
+        </Link>
+        <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
+          <LogOut size={16} /> Déconnexion
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ── Mobile top bar ────────────────────────────────────────────────
+function MobileTopBar({ onMenu, unread }: { onMenu: () => void; unread: number }) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-30 md:hidden bg-white border-b border-surface-border px-4 h-14 flex items-center justify-between">
+      <button onClick={onMenu} className="w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
+        <Menu size={18} />
+      </button>
+      <Logo />
+      <Link href="/dashboard?tab=notifications" className="relative w-9 h-9 bg-surface-muted rounded-xl flex items-center justify-center">
+        <Bell size={16} />
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </Link>
+    </div>
+  );
+}
+
+// ── Mobile drawer ─────────────────────────────────────────────────
+function MobileDrawer({ open, onClose, onLogout, userName }: {
+  open: boolean; onClose: () => void; onLogout: () => void; userName: string;
+}) {
+  const items = [
+    { label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
+    { label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
+    { label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
+  ];
+  if (!open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={onClose} />
+      <div className="fixed top-0 left-0 h-full w-72 stripes-dark text-white z-50 flex flex-col shadow-2xl md:hidden">
+        <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between gap-3">
+          <div className="w-36"><SidebarLogo /></div>
+          <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0"><X size={15} /></button>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {items.map(item => (
+            <Link key={item.label} href={item.href} onClick={onClose}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-all">
+              {item.icon}<span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="px-5 py-4 border-t border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 bg-brand-orange-light rounded-xl flex items-center justify-center">
+              <span className="text-brand-orange text-xs font-bold">{userName[0]?.toUpperCase()}</span>
+            </div>
+            <div className="text-sm font-medium truncate">{userName}</div>
+          </div>
+          <Link href="/profile" onClick={onClose}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors mb-1">
+            <User size={16} /> Mon profil
+          </Link>
+          <button onClick={() => { onLogout(); onClose(); }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-colors">
+            <LogOut size={16} /> Déconnexion
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function KycPage() {
   const router = useRouter();
-  const { firebaseUser, loading: authLoading, getToken } = useAuth();
+  const { firebaseUser, appUser, loading: authLoading, getToken, logout } = useAuth();
   const [kyc, setKyc] = useState<KycData | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [mode, setMode] = useState<'choose' | 'didit' | 'manual'>('choose');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [idFront, setIdFront] = useState<string | null>(null);
   const [idBack, setIdBack] = useState<string | null>(null);
@@ -203,6 +322,18 @@ export default function KycPage() {
     if (!authLoading && !firebaseUser) router.push('/auth/login');
     if (firebaseUser) fetchKyc();
   }, [firebaseUser, authLoading, router, fetchKyc]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.success) setUnreadCount(data.data.filter((n: { read: boolean }) => !n.read).length);
+      } catch { /* non bloquant */ }
+    })();
+  }, [firebaseUser, getToken]);
 
   const isManualLocked = kyc?.method === 'manual' && kyc?.status === 'pending';
   const showChoiceBlock = !kyc || kyc.status === 'rejected' || !kyc.status || kyc.method !== 'manual' || kyc.status !== 'pending';
@@ -237,7 +368,7 @@ export default function KycPage() {
 
   if (authLoading || pageLoading) {
     return (
-      <div className="min-h-screen bg-surface-bg flex items-center justify-center">
+      <div className="min-h-screen stripes-light flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 bg-brand-orange rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse-soft">
             <Shield size={22} className="text-white" />
@@ -249,29 +380,26 @@ export default function KycPage() {
   }
 
   return (
-    <div className="min-h-screen stripes-light">
-      {/* Header */}
-      <header className="bg-white border-b border-surface-border sticky top-0 z-40">
-        <div className="max-w-2xl mx-auto px-5 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-orange rounded-xl flex items-center justify-center">
-              <CreditCard size={15} className="text-white" />
-            </div>
-            <span className="font-semibold tracking-wide">LFD WEB CARD</span>
-          </div>
-          <Link href="/dashboard" className="btn-ghost text-sm">Tableau de bord</Link>
-        </div>
-      </header>
+    <div className="stripes-light min-h-screen">
+      <Sidebar onLogout={logout} userName={appUser?.displayName || 'Utilisateur'} />
+      <MobileTopBar onMenu={() => setDrawerOpen(true)} unread={unreadCount} />
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onLogout={logout}
+        userName={appUser?.displayName || 'Utilisateur'}
+      />
 
-      <main className="max-w-2xl mx-auto px-5 py-10">
+      <div className="main-with-sidebar">
+        <main className="max-w-2xl mx-auto px-5 py-10 pt-20 md:pt-10">
         {/* Titre */}
         <div className="mb-8">
-          <div className="inline-flex items-center gap-2 bg-brand-orange-light border border-brand-orange/20 rounded-full px-4 py-1.5 text-sm text-brand-orange font-semibold mb-4">
-            <Shield size={14} />Vérification d'identité obligatoire
+          <div className="inline-flex items-center gap-2 bg-surface-muted border border-surface-border rounded-full px-4 py-1.5 text-sm text-ink-secondary font-semibold mb-4">
+            <Shield size={14} className="text-brand-orange" />Vérification d'identité (optionnel)
           </div>
           <h1 className="text-3xl font-bold mb-2">Vérifiez votre identité</h1>
           <p className="text-ink-secondary">
-            La vérification d'identité est obligatoire avant d'obtenir ou d'utiliser votre carte virtuelle LFD WEB CARD.
+            La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire.
           </p>
         </div>
 
@@ -469,7 +597,8 @@ export default function KycPage() {
             )}
           </>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

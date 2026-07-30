@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { sendPushToUser } from '@/lib/push';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAdmin(req);
+    const admin = await requireAdmin(req);
     const { userId, action } = await req.json();
     if (!userId || !action)
       return NextResponse.json({ success: false, error: 'userId et action requis' }, { status: 400 });
@@ -34,9 +35,19 @@ export async function PATCH(req: NextRequest) {
     } else if (action === 'make_user') {
       await adminDb.collection('users').doc(userId).update({ role: 'user' });
       await adminAuth.setCustomUserClaims(userId, { role: 'user' });
+    } else if (action === 'require_kyc') {
+      await adminDb.collection('users').doc(userId).update({ kycRequired: true });
+      const title = 'Vérification d\'identité requise';
+      const message = "Pour la sécurité de votre compte, une vérification d'identité est maintenant nécessaire pour continuer à utiliser votre carte.";
+      await adminDb.collection('notifications').add({
+        userId, type: 'kyc_required', title, message, read: false, createdAt: new Date().toISOString(),
+      });
+      await sendPushToUser(userId, { title, body: message, data: { url: '/kyc' } });
+    } else if (action === 'unrequire_kyc') {
+      await adminDb.collection('users').doc(userId).update({ kycRequired: false });
     }
 
-    await adminDb.collection('logs').add({ type: 'admin_action', action, targetUserId: userId, createdAt: new Date().toISOString() });
+    await adminDb.collection('logs').add({ type: 'admin_action', action, targetUserId: userId, adminId: admin.uid, createdAt: new Date().toISOString() });
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur';

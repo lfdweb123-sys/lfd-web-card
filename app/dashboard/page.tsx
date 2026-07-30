@@ -38,7 +38,7 @@ interface KycData {
   approvedAt?: string;
 }
 
-function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void }) {
+function KycGate({ kyc, onVerify, forced }: { kyc: KycData | null; onVerify: () => void; forced?: boolean }) {
   const router = useRouter();
   const isPending = kyc?.status === 'pending' || kyc?.status === 'in_review';
   const isRejected = kyc?.status === 'rejected';
@@ -102,7 +102,9 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
           <>
             <h1 className="text-2xl font-bold text-center mb-3">Vérifiez votre identité</h1>
             <p className="text-ink-secondary text-center text-sm leading-relaxed mb-6">
-              La vérification d'identité est obligatoire avant d'accéder à votre tableau de bord et d'obtenir votre carte virtuelle LFD WEB CARD.
+              {forced
+                ? "Pour la sécurité de votre compte, une vérification d'identité est maintenant nécessaire avant de continuer à utiliser votre tableau de bord et votre carte."
+                : "La vérification d'identité est obligatoire avant d'accéder à votre tableau de bord et d'obtenir votre carte virtuelle LFD WEB CARD."}
             </p>
             <div className="space-y-3 mb-8">
               {[
@@ -933,9 +935,13 @@ function DashboardContent() {
     );
   }
 
-  // KYC optionnel : on n'empêche plus l'accès au dashboard. La vérification reste
-  // disponible et encouragée (bandeau ci-dessous), mais n'est plus obligatoire —
-  // Pagocards n'exige pas de KYC côté cardholder pour émettre une carte.
+  // KYC optionnel par défaut — Pagocards n'exige pas de KYC côté cardholder.
+  // Exception : si un admin a explicitement marqué ce compte comme nécessitant
+  // une vérification (activité suspecte détectée), l'accès est bloqué jusqu'à
+  // ce que la vérification soit complétée et approuvée.
+  if (appUser?.kycRequired && kyc?.status !== 'approved') {
+    return <KycGate kyc={kyc} onVerify={() => router.push('/kyc')} forced />;
+  }
 
   const renderContent = () => {
     switch (tab) {
