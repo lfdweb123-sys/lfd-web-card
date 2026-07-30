@@ -2,7 +2,7 @@
   "name": "LFD WEB CARD",
   "short_name": "LFD WEB CARD",
   "description": "Votre carte, vos paiements, en toute sécurité. Cartes virtuelles Visa et Mastercard internationales, payables en Mobile Money.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "id": "/dashboard",
   "scope": "/",
   "display": "standalone",
