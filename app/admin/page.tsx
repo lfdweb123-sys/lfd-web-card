@@ -814,7 +814,7 @@ export default function AdminPage() {
       );
 
       case 'messages': return (
-        <div className="space-y-5 animate-fade-in max-w-3xl">
+        <div className="space-y-5 animate-fade-in max-w-6xl">
           <h1 className="text-2xl font-bold">Messages</h1>
           <p className="text-ink-secondary text-sm -mt-3">
             Envoyez un message par email et/ou notification push à tous vos utilisateurs, ou à une sélection.
