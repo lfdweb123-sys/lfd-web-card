@@ -487,7 +487,8 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
 function ReloadModal({ card, onClose, country, getToken }: {
   card: VirtualCard; onClose: () => void; country: string; getToken: () => Promise<string>;
 }) {
-  const [amount, setAmount] = useState(5000);
+  const RELOAD_MIN = 30000;
+  const [amount, setAmount] = useState(RELOAD_MIN);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -496,7 +497,7 @@ function ReloadModal({ card, onClose, country, getToken }: {
   const usd = (amount / 600).toFixed(2);
 
   const handle = async () => {
-    if (amount < 1000) { setError('Minimum 1 000 FCFA'); return; }
+    if (amount < RELOAD_MIN) { setError(`Minimum ${RELOAD_MIN.toLocaleString()} FCFA`); return; }
     setLoading(true); setError('');
     try {
       const token = await getToken();
@@ -527,13 +528,13 @@ function ReloadModal({ card, onClose, country, getToken }: {
 
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">Montant à créditer (FCFA)</label>
-          <input type="number" min={1000} step={500} value={amount}
+          <input type="number" min={RELOAD_MIN} step={5000} value={amount}
             onChange={e => setAmount(Number(e.target.value))} className="input-field text-xl font-bold" />
-          <div className="text-ink-muted text-xs mt-1">≈ ${usd} USD crédités sur votre carte</div>
+          <div className="text-ink-muted text-xs mt-1">≈ ${usd} USD crédités sur votre carte · Minimum {RELOAD_MIN.toLocaleString()} FCFA</div>
         </div>
 
         <div className="flex gap-2 mb-5">
-          {[3000, 5000, 10000, 25000].map(a => (
+          {[30000, 50000, 75000, 100000].map(a => (
             <button key={a} onClick={() => setAmount(a)}
               className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${amount === a ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
               {(a / 1000).toFixed(0)}k
@@ -559,7 +560,7 @@ function ReloadModal({ card, onClose, country, getToken }: {
           </div>
         </div>
 
-        <button onClick={handle} disabled={loading || amount < 1000} className="btn-primary w-full py-3.5">
+        <button onClick={handle} disabled={loading || amount < RELOAD_MIN} className="btn-primary w-full py-3.5">
           {loading ? 'Redirection...' : `Payer ${total.toLocaleString()} FCFA →`}
         </button>
         <p className="text-center text-xs text-ink-muted mt-2">Vous serez redirigé vers la page de paiement sécurisé</p>
@@ -1073,6 +1074,21 @@ function DashboardContent() {
                     onFreeze={() => handleFreeze(selectedCard)}
                     loading={freezeLoading}
                   />
+                  <div className={`grid gap-3 ${selectedCard.brand === 'mastercard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
+                      <TrendingUp size={16} /> Recharger
+                    </button>
+                    {selectedCard.brand === 'mastercard' && (
+                      <button onClick={() => setShowWithdraw(true)} className="btn-secondary py-3.5">
+                        <ArrowDownLeft size={16} /> Retirer
+                      </button>
+                    )}
+                    <button onClick={() => handleFreeze(selectedCard)} disabled={freezeLoading} className="btn-secondary py-3.5">
+                      {selectedCard.status === 'frozen'
+                        ? <><Sun size={16} /> Dégeler</>
+                        : <><Snowflake size={16} /> Geler</>}
+                    </button>
+                  </div>
                   <Accordion title="Détails de la carte">
                     <div className="space-y-3 text-sm">
                       {[
@@ -1117,21 +1133,6 @@ function DashboardContent() {
                       })}
                     </div>
                   </Accordion>
-                  <div className={`grid gap-3 ${selectedCard.brand === 'mastercard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                    <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
-                      <TrendingUp size={16} /> Recharger
-                    </button>
-                    {selectedCard.brand === 'mastercard' && (
-                      <button onClick={() => setShowWithdraw(true)} className="btn-secondary py-3.5">
-                        <ArrowDownLeft size={16} /> Retirer
-                      </button>
-                    )}
-                    <button onClick={() => handleFreeze(selectedCard)} disabled={freezeLoading} className="btn-secondary py-3.5">
-                      {selectedCard.status === 'frozen'
-                        ? <><Sun size={16} /> Dégeler</>
-                        : <><Snowflake size={16} /> Geler</>}
-                    </button>
-                  </div>
                 </>
               )}
 

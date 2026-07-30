@@ -15,7 +15,7 @@ import {
   Lock, Eye, EyeOff, CheckCircle, XCircle, Clock,
   Shield, AlertCircle, ChevronRight, Save, Loader2,
   LogOut, Bell, Home, TrendingUp, Menu, X, Camera,
-  Edit3, Check,
+  Edit3, Check, Gift,
 } from 'lucide-react';
 
 // ── Country list (Africa-first) ───────────────────────────────────
@@ -251,6 +251,10 @@ export default function ProfilePage() {
   // Notifications (badge sur la barre mobile)
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Code parrain
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoCodeLoading, setPromoCodeLoading] = useState(false);
+
   // ── Init ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authLoading && !firebaseUser) { router.push('/auth/login'); return; }
@@ -314,6 +318,32 @@ export default function ProfilePage() {
       showToast(err.message || 'Erreur lors de la mise à jour.', 'error');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  // ── Code parrain ───────────────────────────────────────────────
+  const handlePromoCodeSubmit = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoCodeLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/profile/referral', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ promoCode: promoCodeInput.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showToast(data.error || 'Erreur lors de la validation du code.', 'error');
+        return;
+      }
+      showToast('Code parrain appliqué avec succès ✅', 'success');
+      setPromoCodeInput('');
+      // appUser se met à jour automatiquement via l'écoute Firestore en temps réel.
+    } catch {
+      showToast('Erreur réseau.', 'error');
+    } finally {
+      setPromoCodeLoading(false);
     }
   };
 
@@ -517,6 +547,33 @@ export default function ProfilePage() {
                     : <><Save size={16} /> Enregistrer les modifications</>}
                 </button>
               </div>
+            </Section>
+
+            {/* 1bis — Code parrain */}
+            <Section title="Code parrain" subtitle="Renseignez le code de la personne qui vous a recommandé (une seule fois).">
+              {appUser?.referredBy ? (
+                <div className="flex items-center gap-2 bg-brand-green-light border border-brand-green/20 rounded-2xl p-3.5 text-sm text-green-700">
+                  <Gift size={16} />
+                  Code parrain appliqué : <strong>{appUser.referredBy}</strong>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value.toUpperCase())}
+                    className="input-field flex-1"
+                    placeholder="Ex : GERARD10"
+                  />
+                  <button
+                    onClick={handlePromoCodeSubmit}
+                    disabled={promoCodeLoading || !promoCodeInput.trim()}
+                    className="btn-primary sm:w-auto py-3 px-5"
+                  >
+                    {promoCodeLoading ? 'Envoi...' : 'Valider'}
+                  </button>
+                </div>
+              )}
             </Section>
 
             {/* 2 — Statut KYC */}

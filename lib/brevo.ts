@@ -33,6 +33,27 @@ async function sendEmail(data: {
   }
 }
 
+// ── Email : message personnalisé (diffusion admin) ────────────────
+export async function sendCustomEmail(data: { email: string; name: string; subject: string; bodyHtml: string }): Promise<void> {
+  await sendEmail({
+    to: { email: data.email, name: data.name },
+    subject: data.subject,
+    htmlContent: `
+<!DOCTYPE html>
+<html lang="fr">
+<body style="font-family: -apple-system, sans-serif; background: #f7f9fc; padding: 32px 16px; margin: 0;">
+  <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 24px; padding: 32px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+    <div style="font-weight: 700; font-size: 18px; margin-bottom: 24px; color: #0A0A0A;">LFD WEB CARD</div>
+    <div style="font-size: 15px; line-height: 1.7; color: #374151; white-space: pre-wrap;">${data.bodyHtml}</div>
+    <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
+      © 2026 LFD WEB CARD. Tous droits réservés.
+    </div>
+  </div>
+</body>
+</html>`,
+  });
+}
+
 // ── Email : rechargement réussi ──────────────────────────────────
 export async function sendReloadSuccessEmail(data: {
   email: string;

@@ -678,7 +678,7 @@ function Pricing() {
             </p>
             <ul className="space-y-3 mb-7">
               {[
-                'Montant minimum : 3 000 FCFA',
+                'Montant minimum : 30 000 FCFA',
                 'Conversion automatique en USD',
                 'Crédit instantané sur la carte',
                 'Via Mobile Money',

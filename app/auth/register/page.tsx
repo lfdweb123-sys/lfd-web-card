@@ -1,11 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { StripeBackground } from '@/components/StripeBackground';
-import { CreditCard, Eye, EyeOff, ArrowLeft, Shield, Zap, CheckCircle, ArrowRight } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, ArrowLeft, Shield, Zap, CheckCircle, ArrowRight, Gift } from 'lucide-react';
 
 const COUNTRIES = [
   { code: 'BJ', name: 'Bénin' },
@@ -21,8 +21,9 @@ const COUNTRIES = [
   { code: 'OTHER', name: 'Autre' },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [form, setForm] = useState({
     displayName: '',
@@ -31,10 +32,16 @@ export default function RegisterPage() {
     country: 'BJ',
     customCountry: '',
     password: '',
+    promoCode: '',
   });
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) setForm(f => ({ ...f, promoCode: ref.toUpperCase() }));
+  }, [searchParams]);
 
   const isOther = form.country === 'OTHER';
 
@@ -57,6 +64,7 @@ export default function RegisterPage() {
         phone: form.phone,
         country: isOther ? form.customCountry.trim() : form.country,
         password: form.password,
+        promoCode: form.promoCode.trim() || undefined,
       };
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -234,6 +242,23 @@ export default function RegisterPage() {
                   </div>
                 )}
 
+                {/* Code parrain (optionnel) */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Code parrain <span className="text-ink-muted">(optionnel)</span>
+                  </label>
+                  <div className="relative">
+                    <Gift size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
+                    <input
+                      type="text"
+                      value={form.promoCode}
+                      onChange={e => setForm({ ...form, promoCode: e.target.value.toUpperCase() })}
+                      className="input-field pl-11"
+                      placeholder="Ex : GERARD10"
+                    />
+                  </div>
+                </div>
+
                 {/* Mot de passe */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Mot de passe</label>
@@ -293,5 +318,13 @@ export default function RegisterPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen stripes-light" />}>
+      <RegisterForm />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { RegisterSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/auth-middleware';
+import { applyReferralCode } from '@/lib/referral';
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success)
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { email, password, displayName, country, phone } = parsed.data;
+    const { email, password, displayName, country, phone, promoCode } = parsed.data;
     const userRecord = await adminAuth.createUser({ email, password, displayName });
     await adminAuth.setCustomUserClaims(userRecord.uid, { role: 'user' });
     await adminDb.collection('users').doc(userRecord.uid).set({
@@ -22,6 +23,10 @@ export async function POST(req: NextRequest) {
       role: 'user', phone: phone || '', country,
       status: 'active', createdAt: new Date().toISOString(),
     });
+
+    // Code parrain (optionnel) — appliqué une seule fois, à l'inscription.
+    if (promoCode) await applyReferralCode(userRecord.uid, promoCode);
+
     return NextResponse.json({ success: true, data: { uid: userRecord.uid } });
 } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur inconnue';

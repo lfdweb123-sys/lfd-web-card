@@ -3,6 +3,7 @@ import { adminDb, FieldValue } from '@/lib/firebase-admin';
 import { createCard, fundCard, getCard, getMastercardSensitive, type CardBrand } from '@/lib/pagocards';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 import { sendPushToUser } from '@/lib/push';
+import { creditReferralCommission } from '@/lib/referral';
 
 const OK = () => NextResponse.json({ received: true });
 
@@ -245,6 +246,9 @@ async function handleReload(
     rate: 0.05,
     createdAt: new Date().toISOString(),
   });
+
+  // Commission de parrainage (idempotente — une seule fois par transaction de rechargement)
+  await creditReferralCommission(tx.userId as string, txDoc.id);
 
   // Notif in-app
   const reloadTitle = 'Carte rechargée avec succès ✅';

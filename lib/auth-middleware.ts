@@ -33,6 +33,12 @@ export async function requireAdmin(req: NextRequest): Promise<AuthUser> {
   return user;
 }
 
+export async function requireReferrer(req: NextRequest): Promise<AuthUser> {
+  const user = await requireAuth(req);
+  if (user.role !== 'referrer' && user.role !== 'admin') throw new Error('FORBIDDEN');
+  return user;
+}
+
 const rl = new Map<string, { count: number; reset: number }>();
 export function rateLimit(key: string, max = 10, ms = 60000): boolean {
   const now = Date.now();

@@ -10,7 +10,7 @@ import { SidebarLogo } from '@/components/SidebarLogo';
 import {
   Users, CreditCard, TrendingUp, Activity, LogOut, Shield, Loader2,
   CheckCircle, Ban, UserCheck, Search, Home,
-  RefreshCw, ClipboardList, Menu, X, ArrowDownLeft, Send
+  RefreshCw, ClipboardList, Menu, X, ArrowDownLeft, Send, Gift, MessageSquare, Plus, Edit3, Power, Mail, Bell
 } from 'lucide-react';
 
 interface AdminStats {
@@ -32,6 +32,8 @@ const NAV_ITEMS = [
   { id: 'users', label: 'Utilisateurs', icon: <Users size={18} /> },
   { id: 'transactions', label: 'Transactions', icon: <TrendingUp size={18} /> },
   { id: 'withdrawals', label: 'Retraits', icon: <ArrowDownLeft size={18} /> },
+  { id: 'referrers', label: 'Parrains', icon: <Gift size={18} /> },
+  { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
 ];
 
 // ── Sidebar desktop ───────────────────────────────────────────────
@@ -185,6 +187,33 @@ export default function AdminPage() {
   const [wdStatusFilter, setWdStatusFilter] = useState('pending_payout');
   const [wdActionId, setWdActionId] = useState<string | null>(null);
   const [wdReference, setWdReference] = useState<Record<string, string>>({});
+
+  // Onglet Parrains
+  const [referrers, setReferrers] = useState<{
+    id: string; name: string; email: string; promoCode: string;
+    commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; active: boolean;
+  }[]>([]);
+  const [refPage, setRefPage] = useState(1);
+  const [refHasMore, setRefHasMore] = useState(false);
+  const [refLoading, setRefLoading] = useState(false);
+  const [showCreateReferrer, setShowCreateReferrer] = useState(false);
+  const [editingReferrer, setEditingReferrer] = useState<string | null>(null);
+  const [referrerForm, setReferrerForm] = useState({ name: '', email: '', password: '', promoCode: '', commissionPerReload: 25 });
+  const [referrerActionLoading, setReferrerActionLoading] = useState(false);
+  const [referrerError, setReferrerError] = useState('');
+
+  // Onglet Messages (diffusion email/push)
+  const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'selected'>('all');
+  const [broadcastChannels, setBroadcastChannels] = useState<string[]>(['email', 'push']);
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastEmailBody, setBroadcastEmailBody] = useState('');
+  const [broadcastPushTitle, setBroadcastPushTitle] = useState('');
+  const [broadcastPushBody, setBroadcastPushBody] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [broadcastSearch, setBroadcastSearch] = useState('');
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState<{ totalUsers: number; emailsSent: number; pushesSent: number } | null>(null);
+  const [broadcastError, setBroadcastError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
@@ -303,6 +332,134 @@ export default function AdminPage() {
       else setError(data.error || 'Erreur');
     } finally {
       setWdActionId(null);
+    }
+  };
+
+  const fetchReferrers = useCallback(async () => {
+    if (!firebaseUser) return;
+    setRefLoading(true);
+    try {
+      const token = await firebaseUser.getIdToken(true);
+      const res = await fetch(`/api/admin/referrers?page=${refPage}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) {
+        setReferrers(data.data.items);
+        setRefHasMore(data.data.hasMore);
+      }
+    } finally {
+      setRefLoading(false);
+    }
+  }, [firebaseUser, refPage]);
+
+  useEffect(() => {
+    if (tab === 'referrers') fetchReferrers();
+  }, [tab, fetchReferrers]);
+
+  const resetReferrerForm = () => {
+    setReferrerForm({ name: '', email: '', password: '', promoCode: '', commissionPerReload: 25 });
+    setReferrerError('');
+  };
+
+  const handleCreateReferrer = async () => {
+    setReferrerActionLoading(true);
+    setReferrerError('');
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/referrers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(referrerForm),
+      });
+      const data = await res.json();
+      if (!data.success) { setReferrerError(data.error || 'Erreur'); return; }
+      setShowCreateReferrer(false);
+      resetReferrerForm();
+      setMsg('Parrain créé avec succès ✅');
+      await fetchReferrers();
+      setTimeout(() => setMsg(''), 3000);
+    } finally {
+      setReferrerActionLoading(false);
+    }
+  };
+
+  const handleUpdateReferrer = async (id: string, updates: Record<string, unknown>) => {
+    setReferrerActionLoading(true);
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/referrers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const data = await res.json();
+      if (data.success) { setMsg('Parrain mis à jour ✅'); await fetchReferrers(); setTimeout(() => setMsg(''), 3000); }
+      else setError(data.error || 'Erreur');
+    } finally {
+      setReferrerActionLoading(false);
+      setEditingReferrer(null);
+    }
+  };
+
+  const handleDeactivateReferrer = async (id: string) => {
+    setReferrerActionLoading(true);
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch(`/api/admin/referrers?id=${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) { setMsg('Parrain désactivé ✅'); await fetchReferrers(); setTimeout(() => setMsg(''), 3000); }
+      else setError(data.error || 'Erreur');
+    } finally {
+      setReferrerActionLoading(false);
+    }
+  };
+
+  const toggleUserSelection = (id: string) => {
+    setSelectedUserIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const broadcastFiltered = users.filter(u =>
+    u.email?.toLowerCase().includes(broadcastSearch.toLowerCase()) ||
+    u.displayName?.toLowerCase().includes(broadcastSearch.toLowerCase())
+  );
+
+  const toggleChannel = (channel: string) => {
+    setBroadcastChannels(prev => prev.includes(channel) ? prev.filter(c => c !== channel) : [...prev, channel]);
+  };
+
+  const handleSendBroadcast = async () => {
+    setBroadcastError('');
+    setBroadcastResult(null);
+    if (broadcastChannels.length === 0) { setBroadcastError('Choisissez au moins un canal.'); return; }
+    if (broadcastTarget === 'selected' && selectedUserIds.length === 0) { setBroadcastError('Sélectionnez au moins un utilisateur.'); return; }
+    if (broadcastChannels.includes('email') && (!broadcastSubject.trim() || !broadcastEmailBody.trim())) { setBroadcastError('Sujet et message requis pour l\'email.'); return; }
+    if (broadcastChannels.includes('push') && (!broadcastPushTitle.trim() || !broadcastPushBody.trim())) { setBroadcastError('Titre et message requis pour la notification push.'); return; }
+
+    setBroadcastLoading(true);
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          target: broadcastTarget,
+          userIds: broadcastTarget === 'selected' ? selectedUserIds : undefined,
+          channels: broadcastChannels,
+          subject: broadcastSubject,
+          emailBody: broadcastEmailBody,
+          pushTitle: broadcastPushTitle,
+          pushBody: broadcastPushBody,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) { setBroadcastError(data.error || 'Erreur'); return; }
+      setBroadcastResult(data.data);
+    } catch {
+      setBroadcastError('Erreur réseau.');
+    } finally {
+      setBroadcastLoading(false);
     }
   };
 
@@ -587,6 +744,174 @@ export default function AdminPage() {
           </div>
         </div>
       );
+
+      case 'referrers': return (
+        <div className="space-y-5 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Parrains</h1>
+            <button onClick={() => { resetReferrerForm(); setShowCreateReferrer(true); }} className="btn-primary text-sm py-2 px-4">
+              <Plus size={15} /> Nouveau parrain
+            </button>
+          </div>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted">
+                  <tr className="text-ink-secondary text-left">
+                    {['Parrain', 'Code', 'Commission', 'Filleuls', 'Gains', 'Statut', 'Actions'].map(h =>
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {refLoading ? (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+                  ) : referrers.length === 0 ? (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-muted">Aucun parrain pour l'instant</td></tr>
+                  ) : referrers.map(r => (
+                    <tr key={r.id} className="border-t border-surface-border hover:bg-surface-muted/50">
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{r.name}</div>
+                        <div className="text-ink-muted text-xs">{r.email}</div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">{r.promoCode}</td>
+                      <td className="px-4 py-3">
+                        {editingReferrer === r.id ? (
+                          <input
+                            type="number"
+                            defaultValue={r.commissionPerReload}
+                            className="input-field text-xs py-1.5 px-2 w-20"
+                            onBlur={e => handleUpdateReferrer(r.id, { commissionPerReload: Number(e.target.value) })}
+                          />
+                        ) : (
+                          <button onClick={() => setEditingReferrer(r.id)} className="flex items-center gap-1 hover:text-brand-orange">
+                            {r.commissionPerReload} FCFA <Edit3 size={12} />
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">{r.totalReferred}</td>
+                      <td className="px-4 py-3 font-medium">{r.totalEarningsXOF.toLocaleString()} FCFA</td>
+                      <td className="px-4 py-3">
+                        <span className={r.active ? 'badge-green' : 'badge-red'}>{r.active ? '● Actif' : '⊘ Désactivé'}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.active && (
+                          <button onClick={() => handleDeactivateReferrer(r.id)} disabled={referrerActionLoading}
+                            className="inline-flex items-center gap-1.5 text-red-500 text-xs font-medium hover:underline disabled:opacity-50">
+                            <Power size={13} /> Désactiver
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4">
+              <Pagination page={refPage} hasMore={refHasMore} onChange={setRefPage} loading={refLoading} />
+            </div>
+          </div>
+        </div>
+      );
+
+      case 'messages': return (
+        <div className="space-y-5 animate-fade-in max-w-3xl">
+          <h1 className="text-2xl font-bold">Messages</h1>
+          <p className="text-ink-secondary text-sm -mt-3">
+            Envoyez un message par email et/ou notification push à tous vos utilisateurs, ou à une sélection.
+          </p>
+
+          {broadcastResult && (
+            <div className="bg-brand-green-light border border-brand-green/20 text-green-700 rounded-2xl p-4 text-sm">
+              Envoyé à {broadcastResult.totalUsers} utilisateur(s) — {broadcastResult.emailsSent} email(s), {broadcastResult.pushesSent} notification(s) push.
+            </div>
+          )}
+          {broadcastError && <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-sm">{broadcastError}</div>}
+
+          {/* Destinataires */}
+          <div className="card p-5">
+            <h3 className="font-semibold mb-3">Destinataires</h3>
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setBroadcastTarget('all')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${broadcastTarget === 'all' ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
+                Tous les utilisateurs
+              </button>
+              <button onClick={() => setBroadcastTarget('selected')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${broadcastTarget === 'selected' ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
+                Sélectionner ({selectedUserIds.length})
+              </button>
+            </div>
+
+            {broadcastTarget === 'selected' && (
+              <div>
+                <div className="relative mb-3">
+                  <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
+                  <input type="text" placeholder="Rechercher un utilisateur..." value={broadcastSearch}
+                    onChange={e => setBroadcastSearch(e.target.value)} className="input-field pl-10 text-sm" />
+                </div>
+                <div className="max-h-64 overflow-y-auto border border-surface-border rounded-2xl divide-y divide-surface-border">
+                  {broadcastFiltered.length === 0 ? (
+                    <div className="p-4 text-center text-ink-muted text-sm">Aucun utilisateur trouvé</div>
+                  ) : broadcastFiltered.map(u => (
+                    <label key={u.id} className="flex items-center gap-3 p-3 hover:bg-surface-muted cursor-pointer">
+                      <input type="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleUserSelection(u.id)}
+                        className="w-4 h-4 accent-brand-orange" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{u.displayName || '—'}</div>
+                        <div className="text-xs text-ink-muted truncate">{u.email}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Canaux */}
+          <div className="card p-5">
+            <h3 className="font-semibold mb-3">Canaux</h3>
+            <div className="flex gap-2">
+              <button onClick={() => toggleChannel('email')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${broadcastChannels.includes('email') ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
+                <Mail size={14} /> Email
+              </button>
+              <button onClick={() => toggleChannel('push')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${broadcastChannels.includes('push') ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>
+                <Bell size={14} /> Push
+              </button>
+            </div>
+          </div>
+
+          {/* Message email */}
+          {broadcastChannels.includes('email') && (
+            <div className="card p-5">
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Mail size={16} className="text-brand-orange" /> Contenu de l'email</h3>
+              <div className="space-y-3">
+                <input type="text" placeholder="Sujet" value={broadcastSubject}
+                  onChange={e => setBroadcastSubject(e.target.value)} className="input-field text-sm" />
+                <textarea placeholder="Votre message..." value={broadcastEmailBody}
+                  onChange={e => setBroadcastEmailBody(e.target.value)} rows={5} className="input-field text-sm resize-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Message push */}
+          {broadcastChannels.includes('push') && (
+            <div className="card p-5">
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Bell size={16} className="text-brand-orange" /> Notification push</h3>
+              <div className="space-y-3">
+                <input type="text" placeholder="Titre" value={broadcastPushTitle}
+                  onChange={e => setBroadcastPushTitle(e.target.value)} className="input-field text-sm" />
+                <textarea placeholder="Message court..." value={broadcastPushBody}
+                  onChange={e => setBroadcastPushBody(e.target.value)} rows={3} className="input-field text-sm resize-none" />
+              </div>
+            </div>
+          )}
+
+          <button onClick={handleSendBroadcast} disabled={broadcastLoading} className="btn-primary w-full py-3.5">
+            {broadcastLoading ? 'Envoi en cours...' : (<><Send size={16} /> Envoyer le message</>)}
+          </button>
+        </div>
+      );
     }
   };
 
@@ -608,6 +933,43 @@ export default function AdminPage() {
         </main>
       </div>
       <BottomNav active={tab} onNav={setTab} />
+
+      {showCreateReferrer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up">
+            <div className="flex justify-between items-start mb-5">
+              <h3 className="font-bold text-xl">Nouveau parrain</h3>
+              <button onClick={() => setShowCreateReferrer(false)} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
+            </div>
+            {referrerError && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{referrerError}</div>}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Nom complet</label>
+                <input type="text" value={referrerForm.name} onChange={e => setReferrerForm({ ...referrerForm, name: e.target.value })} className="input-field" placeholder="Gérard Sononkpon" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Email</label>
+                <input type="email" value={referrerForm.email} onChange={e => setReferrerForm({ ...referrerForm, email: e.target.value })} className="input-field" placeholder="parrain@example.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Mot de passe</label>
+                <input type="text" value={referrerForm.password} onChange={e => setReferrerForm({ ...referrerForm, password: e.target.value })} className="input-field" placeholder="Minimum 8 caractères" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Code parrain</label>
+                <input type="text" value={referrerForm.promoCode} onChange={e => setReferrerForm({ ...referrerForm, promoCode: e.target.value.toUpperCase() })} className="input-field" placeholder="GERARD10" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Commission par rechargement (FCFA)</label>
+                <input type="number" value={referrerForm.commissionPerReload} onChange={e => setReferrerForm({ ...referrerForm, commissionPerReload: Number(e.target.value) })} className="input-field" />
+              </div>
+              <button onClick={handleCreateReferrer} disabled={referrerActionLoading} className="btn-primary w-full py-3.5">
+                {referrerActionLoading ? 'Création...' : 'Créer le parrain'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

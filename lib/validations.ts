@@ -6,6 +6,7 @@ export const RegisterSchema = z.object({
   displayName: z.string().min(2).max(50),
   country: z.string().min(2).max(3),
   phone: z.string().optional(),
+  promoCode: z.string().max(30).optional(),
 });
 
 export const BuyCardSchema = z.object({
@@ -15,7 +16,7 @@ export const BuyCardSchema = z.object({
 
 export const ReloadCardSchema = z.object({
   cardId: z.string().min(1),
-  amount: z.number().min(1000).max(500000),
+  amount: z.number().min(30000).max(500000),
   country: z.string().min(2).max(3),
 });
 
