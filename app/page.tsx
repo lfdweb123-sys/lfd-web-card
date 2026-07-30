@@ -373,7 +373,7 @@ function Hero() {
             <div className="flex items-start gap-2.5 bg-brand-green-light/60 border border-brand-green/20 rounded-2xl px-4 py-3 mb-6 max-w-lg">
               <Shield size={16} className="text-brand-green flex-shrink-0 mt-0.5" />
               <p className="text-sm text-ink-secondary leading-snug">
-                <strong className="text-ink-primary">Vérifiez votre identité (optionnel).</strong> La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire.
+                <strong className="text-ink-primary">Identité (optionnel).</strong> La vérification de votre identité n'est pas obligatoire pour utiliser votre carte.
               </p>
             </div>
           )}
