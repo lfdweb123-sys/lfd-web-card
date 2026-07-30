@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { cardId, amount, country } = parsed.data;
 
     // ✅ Séparation montant carte / frais plateforme
-    const fee = Math.round(amount * 0.12);  // frais 12% → ton wallet
+    const fee = Math.round(amount * 0.05);  // frais 5% → ton wallet
     const total = amount + fee;             // montant réel facturé au client
 
     const cardDoc = await adminDb.collection('cards').doc(cardId).get();
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       cardId,
       type: 'card_reload',
       amount,   // montant carte uniquement
-      fee,      // frais plateforme 12%
+      fee,      // frais plateforme 5%
       total,    // total client (amount + fee)
       currency: 'XOF',
       status: 'pending',

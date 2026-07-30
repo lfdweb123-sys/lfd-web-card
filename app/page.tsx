@@ -136,6 +136,7 @@ function Navbar() {
               ['#features', 'Fonctionnalités'],
               ['#how', 'Comment ça marche'],
               ['#pricing', 'Tarifs'],
+              ['/comparaison', 'Comparatif'],
               ['#faq', 'FAQ'],
             ].map(([href, label]) => (
               <a
@@ -184,6 +185,7 @@ function Navbar() {
             ['#features', 'Fonctionnalités'],
             ['#how', 'Comment ça marche'],
             ['#pricing', 'Tarifs'],
+            ['/comparaison', 'Comparatif'],
             ['#faq', 'FAQ'],
           ].map(([href, label]) => (
             <a
@@ -669,7 +671,7 @@ function Pricing() {
             </div>
             <h3 className="font-bold text-xl mb-2">Rechargement</h3>
             <div className="text-4xl font-bold mb-1 text-brand-green">
-              12% <span className="text-xl font-medium text-ink-secondary">de frais</span>
+              5% <span className="text-xl font-medium text-ink-secondary">de frais</span>
             </div>
             <p className="text-ink-secondary text-sm mb-6">
               Rechargez le montant que vous voulez.
@@ -875,6 +877,11 @@ function Footer() {
                 <a href="#how" className="hover:text-ink-primary transition-colors">
                   Comment ça marche
                 </a>
+              </li>
+              <li>
+                <Link href="/comparaison" className="hover:text-ink-primary transition-colors">
+                  Comparatif
+                </Link>
               </li>
             </ul>
           </div>

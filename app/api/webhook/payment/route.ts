@@ -242,7 +242,7 @@ async function handleReload(
     totalXOF: tx.total,
     feeXOF,
     feeUSD,
-    rate: 0.12,
+    rate: 0.05,
     createdAt: new Date().toISOString(),
   });
 

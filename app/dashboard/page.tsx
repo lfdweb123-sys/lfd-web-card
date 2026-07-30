@@ -126,6 +126,45 @@ function KycGate({ kyc, onVerify }: { kyc: KycData | null; onVerify: () => void 
   );
 }
 
+function KycBanner({ kyc }: { kyc: KycData | null }) {
+  const router = useRouter();
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+
+  const isPending = kyc?.status === 'pending' || kyc?.status === 'in_review';
+  const isRejected = kyc?.status === 'rejected';
+
+  return (
+    <div className="card p-4 flex items-start gap-3 border border-surface-border">
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${isRejected ? 'bg-red-50' : isPending ? 'bg-yellow-50' : 'bg-brand-orange-light'}`}>
+        {isPending ? <Clock size={18} className="text-yellow-600" />
+          : isRejected ? <XCircle size={18} className="text-red-500" />
+          : <Shield size={18} className="text-brand-orange" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm mb-0.5">
+          {isPending ? 'Vérification en cours' : isRejected ? 'Vérification refusée' : 'Vérifiez votre identité (optionnel)'}
+        </div>
+        <p className="text-ink-secondary text-xs leading-relaxed mb-3">
+          {isPending
+            ? "Votre dossier est en cours d'examen. Vous serez notifié dès la décision."
+            : isRejected
+              ? kyc?.rejectionReason || 'Vous pouvez soumettre à nouveau votre dossier.'
+              : "La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire."}
+        </p>
+        {!isPending && (
+          <button onClick={() => router.push('/kyc')} className="btn-primary text-xs py-2 px-4">
+            {isRejected ? 'Réessayer' : 'Vérifier maintenant'}
+          </button>
+        )}
+      </div>
+      <button onClick={() => setDismissed(true)} className="text-ink-muted hover:text-ink-primary flex-shrink-0">
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
 // ── Logo ─────────────────────────────────────────────────────────
 function Logo() {
   return <LogoComponent />;
@@ -452,7 +491,7 @@ function ReloadModal({ card, onClose, country, getToken }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fee = Math.round(amount * 0.12);
+  const fee = Math.round(amount * 0.05);
   const total = amount + fee;
   const usd = (amount / 600).toFixed(2);
 
@@ -510,7 +549,7 @@ function ReloadModal({ card, onClose, country, getToken }: {
           <div className="flex justify-between">
             <span className="text-ink-secondary flex items-center gap-1.5">
               Frais de service
-              <span className="text-[10px] bg-ink-muted/10 text-ink-muted px-1.5 py-0.5 rounded-full font-medium">12%</span>
+              <span className="text-[10px] bg-ink-muted/10 text-ink-muted px-1.5 py-0.5 rounded-full font-medium">5%</span>
             </span>
             <span className="font-medium text-ink-primary">+{fee.toLocaleString()} FCFA</span>
           </div>
@@ -893,9 +932,9 @@ function DashboardContent() {
     );
   }
 
-  if (kyc?.status !== 'approved') {
-    return <KycGate kyc={kyc} onVerify={() => router.push('/kyc')} />;
-  }
+  // KYC optionnel : on n'empêche plus l'accès au dashboard. La vérification reste
+  // disponible et encouragée (bandeau ci-dessous), mais n'est plus obligatoire —
+  // Pagocards n'exige pas de KYC côté cardholder pour émettre une carte.
 
   const renderContent = () => {
     switch (tab) {
@@ -906,13 +945,21 @@ function DashboardContent() {
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium mb-3">
-                <CheckCircle size={12} className="text-brand-green" /> Identité vérifiée
-              </div>
+              {kyc?.status === 'approved' ? (
+                <div className="inline-flex items-center gap-1.5 bg-brand-green-light border border-brand-green/20 rounded-full px-3 py-1 text-xs text-green-700 font-medium mb-3">
+                  <CheckCircle size={12} className="text-brand-green" /> Identité vérifiée
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 bg-surface-muted border border-surface-border rounded-full px-3 py-1 text-xs text-ink-secondary font-medium mb-3">
+                  <Shield size={12} /> Identité non vérifiée (optionnel)
+                </div>
+              )}
               <h1 className="text-2xl font-bold">Bonjour, {appUser?.displayName?.split(' ')[0]} 👋</h1>
               <p className="text-ink-secondary">Bienvenue sur votre espace LFD WEB CARD</p>
             </div>
           </div>
+
+          {kyc?.status !== 'approved' && <KycBanner kyc={kyc} />}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="card p-4">
