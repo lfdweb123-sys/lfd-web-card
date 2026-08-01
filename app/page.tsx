@@ -452,6 +452,100 @@ function Stats() {
 /* ─────────────────────────────────────────────
    Features
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   Plateformes de publicité — globe dynamique
+───────────────────────────────────────────── */
+function AdsPlatforms() {
+  const platforms = [
+    'Google Ads', 'Meta Ads', 'TikTok Ads', 'YouTube Ads',
+    'Snapchat Ads', 'X Ads', 'LinkedIn Ads', 'Pinterest Ads',
+  ];
+  const radius = 42; // % du conteneur
+
+  return (
+    <section className="py-20 px-5 sm:px-6 overflow-hidden">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+        {/* Texte à gauche */}
+        <FadeIn>
+          <p className="text-ink-muted text-sm font-medium mb-3">Compatible partout</p>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-5 leading-tight">
+            LFD WEB CARD fonctionne sur{' '}
+            <span className="text-gradient">toutes les plateformes de publicité</span>{' '}
+            et bien plus
+          </h2>
+          <p className="text-ink-secondary text-lg leading-relaxed">
+            Google Ads, Meta Ads, TikTok Ads et des dizaines d'autres — payez vos campagnes
+            publicitaires directement avec votre carte virtuelle Visa ou Mastercard, où que vous soyez.
+          </p>
+        </FadeIn>
+
+        {/* Globe dynamique à droite */}
+        <FadeIn delay={0.1} className="relative mx-auto w-full max-w-[380px] aspect-square">
+          {/* Sphère de fond */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 32% 28%, rgba(255,122,0,0.16), transparent 55%), radial-gradient(circle at 68% 75%, rgba(0,200,83,0.12), transparent 55%), #0A0A0A',
+            }}
+          />
+          {/* Lignes de méridien (effet globe) */}
+          <div className="absolute inset-[6%] rounded-full border border-white/10" />
+          <div className="absolute inset-[16%] rounded-full border border-white/[0.07]" />
+          <div className="absolute inset-[28%] rounded-full border border-white/[0.05]" />
+          <div
+            className="absolute inset-[6%] rounded-full border border-white/[0.08]"
+            style={{ clipPath: 'inset(0 48% 0 48%)' }}
+          />
+          <div
+            className="absolute inset-[6%] rounded-full border border-white/[0.08]"
+            style={{ clipPath: 'inset(48% 0 48% 0)' }}
+          />
+
+          {/* Plateformes — chacune monte/descend sur sa propre ligne */}
+          {platforms.map((name, i) => {
+            const angle = (360 / platforms.length) * i;
+            const rad = (angle * Math.PI) / 180;
+            const x = 50 + radius * Math.sin(rad);
+            const y = 50 - radius * Math.cos(rad);
+            return (
+              <motion.div
+                key={name}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${x}%`, top: `${y}%` }}
+                animate={{ y: [0, -12, 0] }}
+                transition={{
+                  duration: 2.6 + (i % 4) * 0.4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: i * 0.25,
+                }}
+              >
+                <span className="whitespace-nowrap bg-white/[0.06] border border-white/10 backdrop-blur-sm text-white/85 text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full shadow-lg">
+                  {name}
+                </span>
+              </motion.div>
+            );
+          })}
+
+          {/* LFD WEB CARD — centre du globe, fixe */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              className="relative bg-white rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xl flex items-center gap-2 z-10"
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="w-7 h-7 bg-brand-orange rounded-lg flex items-center justify-center flex-shrink-0">
+                <CreditCard size={14} className="text-white" />
+              </div>
+              <span className="font-bold text-xs sm:text-sm tracking-wide text-ink-primary whitespace-nowrap">LFD WEB CARD</span>
+            </motion.div>
+          </div>
+        </FadeIn>
+      </div>
+    </section>
+  );
+}
+
 function Features() {
   const items = [
     {
@@ -974,6 +1068,7 @@ export default function HomePage() {
       <Navbar />
       <Hero />
       <Stats />
+      <AdsPlatforms />
       <Features />
       <HowItWorks />
       <Where />
