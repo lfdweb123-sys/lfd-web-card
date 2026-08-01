@@ -3,7 +3,7 @@
   "short_name": "LFD WEB CARD",
   "description": "Votre carte, vos paiements, en toute sécurité. Cartes virtuelles Visa et Mastercard internationales, payables en Mobile Money.",
   "start_url": "/",
-  "id": "/dashboard",
+  "id": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
@@ -30,7 +30,7 @@
     {
       "name": "Mon tableau de bord",
       "short_name": "Dashboard",
-      "url": "/dashboard",
+      "url": "/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
