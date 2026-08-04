@@ -32,7 +32,6 @@ function RegisterForm() {
     country: 'BJ',
     customCountry: '',
     password: '',
-    promoCode: '',
   });
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -73,7 +72,6 @@ function RegisterForm() {
         phone: form.phone,
         country: isOther ? form.customCountry.trim() : form.country,
         password: form.password,
-        promoCode: form.promoCode.trim() || undefined,
         referralUuid: sponsor ? sponsor.uuid : undefined,
       };
       const res = await fetch('/api/auth/register', {
@@ -257,23 +255,6 @@ function RegisterForm() {
                     />
                   </div>
                 )}
-
-                {/* Code parrain (optionnel) */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Code parrain <span className="text-ink-muted">(optionnel)</span>
-                  </label>
-                  <div className="relative">
-                    <Gift size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
-                    <input
-                      type="text"
-                      value={form.promoCode}
-                      onChange={e => setForm({ ...form, promoCode: e.target.value.toUpperCase() })}
-                      className="input-field pl-11"
-                      placeholder="Ex : GERARD10"
-                    />
-                  </div>
-                </div>
 
                 {/* Mot de passe */}
                 <div>
