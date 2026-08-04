@@ -10,13 +10,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * uniquement son prénom, pour le message d'invitation. Un UUID
  * invalide ou inconnu renvoie simplement { success: false }.
  */
-export async function GET(req: NextRequest, { params }: { params: { uuid: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ uuid: string }> }) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   if (!rateLimit(`referral-public:${ip}`, 30, 10 * 60 * 1000)) {
     return NextResponse.json({ success: false }, { status: 429 });
   }
 
-  const { uuid } = params;
+  const { uuid } = await params;
   if (!uuid || !UUID_RE.test(uuid)) {
     return NextResponse.json({ success: false }, { status: 200 });
   }
