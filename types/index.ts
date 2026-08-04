@@ -67,7 +67,8 @@ export interface Referrer {
   id: string; // = Firebase Auth uid
   name: string;
   email: string;
-  promoCode: string;
+  promoCode: string; // usage interne (saisie manuelle, dashboard) — jamais exposé dans une URL
+  publicId?: string; // UUID public exposé dans les liens de parrainage (?ref=uuid)
   commissionPerReload: number; // en FCFA
   totalReferred: number;
   totalEarningsXOF: number;

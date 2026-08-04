@@ -37,10 +37,19 @@ function RegisterForm() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sponsor, setSponsor] = useState<{ name: string; uuid: string } | null>(null);
 
   useEffect(() => {
     const ref = searchParams.get('ref');
-    if (ref) setForm(f => ({ ...f, promoCode: ref.toUpperCase() }));
+    if (!ref || ref === 'undefined' || ref === 'null') return;
+    let cancelled = false;
+    fetch(`/api/referral/public/${encodeURIComponent(ref)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled && data?.success) setSponsor({ name: data.name, uuid: ref });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [searchParams]);
 
   const isOther = form.country === 'OTHER';
@@ -65,6 +74,7 @@ function RegisterForm() {
         country: isOther ? form.customCountry.trim() : form.country,
         password: form.password,
         promoCode: form.promoCode.trim() || undefined,
+        referralUuid: sponsor ? sponsor.uuid : undefined,
       };
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -163,6 +173,12 @@ function RegisterForm() {
 
             <h1 className="text-3xl font-bold mb-1 mt-4 lg:mt-0">Créer un compte</h1>
             <p className="text-ink-secondary mb-7">Obtenez votre carte virtuelle en 5 minutes</p>
+            {sponsor && (
+              <div className="flex items-center gap-2 bg-brand-orange-light border border-brand-orange/20 text-brand-orange rounded-2xl px-3.5 py-2.5 text-sm font-medium mb-5 -mt-2">
+                <Gift size={15} className="shrink-0" />
+                🎉 {sponsor.name} vous invite sur LFD WEB CARD
+              </div>
+            )}
 
             <div className="card p-6 sm:p-7 stripes-panel">
               {error && (

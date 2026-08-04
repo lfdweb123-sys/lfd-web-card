@@ -6,11 +6,11 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Pagination } from '@/components/Pagination';
 import {
-  Gift, LogOut, Users, TrendingUp, Copy, Check, Loader2, ArrowUpRight,
+  Gift, LogOut, Users, TrendingUp, Copy, Check, Loader2, ArrowUpRight, Link2,
 } from 'lucide-react';
 
 interface ReferrerData {
-  id: string; name: string; email: string; promoCode: string;
+  id: string; name: string; email: string; promoCode: string; publicId?: string;
   commissionPerReload: number; totalReferred: number; totalEarningsXOF: number; unpaidXOF: number; active: boolean;
 }
 interface Earning { id: string; amountXOF: number; paid: boolean; createdAt: string; }
@@ -70,6 +70,17 @@ export default function ParrainDashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const referralLink = referrer?.publicId
+    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://card.lfdweb.com'}/auth/register?ref=${referrer.publicId}`
+    : '';
+  const [linkCopied, setLinkCopied] = useState(false);
+  const handleCopyLink = () => {
+    if (!referralLink) return;
+    navigator.clipboard.writeText(referralLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   if (!authChecked || loading && !referrer) {
     return (
       <div className="min-h-screen stripes-light flex items-center justify-center">
@@ -117,6 +128,26 @@ export default function ParrainDashboardPage() {
             Partagez ce code — vos filleuls le renseignent à l'inscription ou depuis leur profil.
           </p>
         </div>
+
+        {/* Lien de parrainage (UUID) */}
+        {referralLink && (
+          <div className="card p-6">
+            <div className="text-ink-secondary text-xs font-medium mb-2 flex items-center gap-1.5">
+              <Link2 size={13} /> Votre lien de parrainage
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 truncate text-sm text-ink-secondary bg-surface-muted rounded-xl px-3.5 py-2.5">
+                {referralLink}
+              </div>
+              <button onClick={handleCopyLink} className="w-9 h-9 bg-white border border-surface-border rounded-xl flex items-center justify-center shadow-sm hover:shadow-md transition-shadow shrink-0">
+                {linkCopied ? <Check size={16} className="text-brand-green" /> : <Copy size={16} className="text-ink-secondary" />}
+              </button>
+            </div>
+            <p className="text-ink-secondary text-xs mt-3">
+              Plus simple à partager sur les réseaux — le filleul voit directement votre nom et n'a rien à saisir.
+            </p>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">

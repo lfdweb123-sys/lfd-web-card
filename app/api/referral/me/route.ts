@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireReferrer } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
+import { randomUUID } from 'node:crypto';
 
 const PAGE_SIZE = 15;
 
@@ -13,6 +14,16 @@ export async function GET(req: NextRequest) {
     const referrerDoc = await adminDb.collection('referrers').doc(user.uid).get();
     if (!referrerDoc.exists)
       return NextResponse.json({ success: false, error: 'Compte parrain introuvable.' }, { status: 404 });
+
+    // Backfill : les comptes parrain créés avant l'introduction du publicId
+    // en reçoivent un à la volée, pour que le lien de parrainage affiché
+    // dans le dashboard ne soit jamais `?ref=undefined`.
+    let referrerData = referrerDoc.data()!;
+    if (!referrerData.publicId) {
+      const publicId = randomUUID();
+      await referrerDoc.ref.update({ publicId });
+      referrerData = { ...referrerData, publicId };
+    }
 
     let earnings: unknown[] = [];
     let hasMore = false;
@@ -33,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { referrer: { id: referrerDoc.id, ...referrerDoc.data() }, earnings, page, hasMore },
+      data: { referrer: { id: referrerDoc.id, ...referrerData }, earnings, page, hasMore },
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur';

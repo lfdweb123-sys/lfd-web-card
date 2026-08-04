@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const PAGE_SIZE = 15;
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     });
 
     await adminDb.collection('referrers').doc(userRecord.uid).set({
-      name, email, promoCode: code, commissionPerReload,
+      name, email, promoCode: code, publicId: randomUUID(), commissionPerReload,
       totalReferred: 0, totalEarningsXOF: 0, unpaidXOF: 0, active: true,
       createdAt: new Date().toISOString(),
     });

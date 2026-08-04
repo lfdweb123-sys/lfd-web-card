@@ -4,6 +4,28 @@
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
 
 /**
+ * Résout un publicId (UUID exposé dans ?ref=) vers les infos publiques
+ * d'un parrain, sans jamais exposer son promoCode interne. Utilisé par
+ * la page d'inscription pour afficher "X vous invite sur LFD WEB CARD".
+ * Retourne null si le UUID est invalide/inconnu ou le parrain inactif.
+ */
+export async function resolveReferrerByPublicId(
+  publicId: string
+): Promise<{ id: string; name: string; promoCode: string } | null> {
+  if (!publicId) return null;
+  const snap = await adminDb
+    .collection('referrers')
+    .where('publicId', '==', publicId)
+    .where('active', '==', true)
+    .limit(1)
+    .get();
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  const data = doc.data();
+  return { id: doc.id, name: data.name, promoCode: data.promoCode };
+}
+
+/**
  * Crédite la commission du parrain pour un rechargement donné, de façon idempotente :
  * si cette transaction a déjà été créditée (ex : webhook rejoué), on ne recrédite pas.
  * Ne fait jamais échouer le flux de rechargement appelant en cas de problème.
