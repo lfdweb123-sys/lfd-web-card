@@ -300,13 +300,18 @@ function PayoutsTab({ getToken }: { getToken: () => Promise<string> }) {
 
   const achConfirm = async () => {
     if (!achQuote) return;
+    // La doc Pagocards ne donne aucun exemple JSON pour la réponse de devis ACH — seul le
+    // chemin /api/payouts/{quoteId}/initialize confirme le nom "quoteId". On reste défensif
+    // au cas où la réponse réelle utiliserait une autre casse.
+    const quoteId = (achQuote.quoteId || achQuote.quote_id || achQuote.id) as string | undefined;
+    if (!quoteId) { setResult({ message: "Impossible de retrouver l'identifiant du devis dans la réponse. Vérifiez la réponse brute ci-dessus.", type: 'error' }); return; }
     setLoading(true); setResult(null);
     try {
       const token = await getToken();
       const res = await fetch('/api/admin/payouts/ach/confirm', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          quoteId: (achQuote as { quoteId: string }).quoteId,
+          quoteId,
           account_type: achForm.account_type, account_number: achForm.account_number,
           routing_number: achForm.routing_number, bank_name: achForm.bank_name,
           bank_address: achForm.bank_address, post_code: achForm.post_code,

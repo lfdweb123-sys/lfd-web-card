@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { confirmSepaTransfer } from '@/lib/pagocards-4xxbins';
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success)
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
 
-    const result = await confirmSepaTransfer(parsed.data.quoteid, crypto.randomUUID());
+    const result = await confirmSepaTransfer(parsed.data.quoteid, randomUUID());
 
     await adminDb.collection('logs').add({
       type: 'sepa_payout_confirmed',

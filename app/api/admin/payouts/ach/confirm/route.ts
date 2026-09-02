@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { initializePayout } from '@/lib/pagocards';
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
     const { quoteId, ...bankDetails } = parsed.data;
 
-    const result = await initializePayout(quoteId, bankDetails, crypto.randomUUID());
+    const result = await initializePayout(quoteId, bankDetails, randomUUID());
 
     await adminDb.collection('logs').add({
       type: 'ach_payout_confirmed',
