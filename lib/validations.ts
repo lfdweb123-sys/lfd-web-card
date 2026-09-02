@@ -27,8 +27,13 @@ export const FreezeCardSchema = z.object({
 });
 
 export const BuyGiftcardSchema = z.object({
-  sku: z.string().min(1),
-  title: z.string().min(1).max(120),
+  // Le catalogue Pagocards renvoie parfois le sku comme un nombre JSON (ex. 4402)
+  // et non une chaîne comme le documente son propre schéma — on l'accepte dans
+  // les deux formats et on le normalise en chaîne pour le reste du flux.
+  sku: z.union([z.string(), z.number()]).transform(String).pipe(z.string().min(1)),
+  // Le catalogue Pagocards renvoie parfois des titres avec des espaces/tabulations
+  // parasites en tête (ex. "\tTJ Maxx") — on les nettoie avant stockage/affichage.
+  title: z.string().trim().min(1).max(120),
   quantity: z.number().int().min(1).max(10),
   amountUSD: z.number().min(1).max(500), // prix unitaire en USD
   country: z.string().min(2).max(3),
