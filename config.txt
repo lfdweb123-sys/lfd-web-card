@@ -1,0 +1,9 @@
+Service	URL exacte	Événements à cocher
+
+Passerelle de paiement	https://card.lfdweb.com/api/webhook/payment	payment.completed, payment.failed
+
+Pagocards	https://card.lfdweb.com/api/webhook/pagocards	3DS, activation wallet
+
+VerzaPay	https://card.lfdweb.com/api/webhook/verzapay	payout.completed, payout.failed uniquement
+
+Didit (KYC)	https://card.lfdweb.com/api/webhook/didit	déjà configuré, inchangé
