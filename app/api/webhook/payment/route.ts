@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
 import { createCard, fundCard, getCard, getAllCards, purchaseGiftcard, type CardBrand } from '@/lib/pagocards';
 import { createCard4xx, fundCard4xx, type Product4xx } from '@/lib/pagocards-4xxbins';
+import { verifyPayment } from '@/lib/payment-gateway';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 import { sendPushToUser } from '@/lib/push';
 import { creditReferralCommission } from '@/lib/referral';
@@ -53,6 +54,32 @@ export async function POST(req: NextRequest) {
 
   const tx = txDoc.data()!;
   if (tx.status === 'success') return OK();
+
+  // ⚠️ SÉCURITÉ CRITIQUE — cet endpoint est public et n'est protégé par aucune signature.
+  // Le corps de la requête (event/transaction.status) est donc entièrement falsifiable :
+  // n'importe qui connaissant ou devinant un transactionId pourrait POSTer directement ici
+  // (même depuis la console d'un navigateur) pour se faire créditer une carte ou un
+  // rechargement sans jamais payer. On ne fait donc JAMAIS confiance au statut annoncé par
+  // le corps de la requête pour une réussite : on revérifie toujours le statut réel
+  // directement auprès de la passerelle, avec notre propre clé API (jamais exposée côté
+  // client), avant de créditer quoi que ce soit.
+  if (isSuccess) {
+    if (!tx.pid) {
+      await txDoc.ref.update({ status: 'error', errorMessage: 'Webhook reçu sans référence de paiement vérifiable — refusé par sécurité.', completedAt: new Date().toISOString() });
+      return OK();
+    }
+    let verified = false;
+    try {
+      const verification = await verifyPayment(tx.pid as string) as { success?: boolean; status?: string };
+      const verifiedStatus = String(verification?.status || '').toLowerCase();
+      verified = verification?.success === true || ['successful', 'success', 'completed', 'paid'].includes(verifiedStatus);
+    } catch { verified = false; }
+
+    if (!verified) {
+      await txDoc.ref.update({ status: 'error', errorMessage: 'Webhook de succès reçu mais non confirmé par la passerelle — refusé par sécurité.', completedAt: new Date().toISOString() });
+      return OK();
+    }
+  }
 
   if (isFailed) {
     await txDoc.ref.update({ status: 'failed', completedAt: new Date().toISOString() });
