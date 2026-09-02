@@ -177,6 +177,7 @@ export interface PagoAdminBalance {
   master_wallet_balance: number;
   visa_wallet_balance: number;
   giftcard_wallet_balance: number;
+  sepa_wallet_balance?: number;
 }
 
 export interface PagoAdminTransactions {

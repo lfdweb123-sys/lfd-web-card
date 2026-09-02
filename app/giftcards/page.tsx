@@ -276,7 +276,9 @@ export default function GiftcardsPage() {
     setCatalogLoading(true); setCatalogError('');
     try {
       const token = await getToken();
-      const qs = new URLSearchParams({ page: String(page), limit: '24' });
+      // La conversion FX pour les cartes non-USD n'est pas encore gérée côté paiement —
+      // on ne propose que le catalogue USD pour l'instant (voir /api/giftcards/buy).
+      const qs = new URLSearchParams({ page: String(page), limit: '24', currency: 'USD' });
       if (q) qs.set('search', q);
       const res = await fetch(`/api/giftcards?${qs.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
@@ -355,7 +357,7 @@ export default function GiftcardsPage() {
               <Gift size={14} className="text-brand-orange" />Cartes cadeaux
             </div>
             <h1 className="text-3xl font-bold mb-2">Offrez ou utilisez une carte cadeau</h1>
-            <p className="text-ink-secondary">Payez en Mobile Money, recevez votre code cadeau instantanément après confirmation du paiement.</p>
+            <p className="text-ink-secondary">Payez en Mobile Money, recevez votre code cadeau instantanément après confirmation du paiement. Catalogue en dollars US (USD) uniquement pour le moment.</p>
           </div>
 
           {orders.length > 0 && (

@@ -28,10 +28,11 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 // Le retrait n'est documenté par Pagocards que pour l'EURO-MASTER (Mastercard classique)
-// et pour toute la nouvelle gamme 4XXBINs (Visa 493BIN et Mastercard 536BIN) — jamais pour
-// la Visacard classique.
+// et, côté 4XXBINs, uniquement pour les cartes 400BIN/493BIN (Visa) — jamais pour la
+// Visacard classique ni pour 536_master (Mastercard 4XXBINs).
 function canWithdraw(card: VirtualCard) {
-  return card.apiFamily === '4xxbins' || card.brand === 'mastercard';
+  if (card.apiFamily === '4xxbins') return card.productCode !== '536_master';
+  return card.brand === 'mastercard';
 }
 
 // ── KYC ──────────────────────────────────────────────────────────

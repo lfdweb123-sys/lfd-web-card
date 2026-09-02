@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
-import { createCard, fundCard, getCard, getMastercardSensitive, purchaseGiftcard, type CardBrand } from '@/lib/pagocards';
+import { createCard, fundCard, getCard, getAllCards, purchaseGiftcard, type CardBrand } from '@/lib/pagocards';
 import { createCard4xx, fundCard4xx, type Product4xx } from '@/lib/pagocards-4xxbins';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 import { sendPushToUser } from '@/lib/push';
@@ -139,21 +139,24 @@ async function handlePurchase(
     pagocardsCardId = pagoRes.cardid;
 
     // La réponse de création (doc Pagocards) ne renvoie que cardid/useremail/nameoncard.
-    // On complète avec getcard (solde/devise/statut) et, pour l'EURO-MASTER, getcardsensitive
-    // (numéro/CVC/mois d'expiration via une URL d'embed signée).
+    // On complète avec getcard pour le solde/devise/statut.
     try {
       const details = await getCard({ brand, cardid: pagoRes.cardid, email: user.email as string });
       balance = details.balance ?? 0;
       currency = details.currency || currency;
     } catch { /* détails non bloquants pour la création */ }
 
-    if (brand === 'mastercard') {
-      try {
-        const sensitive = await getMastercardSensitive({ cardid: pagoRes.cardid, email: user.email as string });
-        if (sensitive.cardnumber) last4 = sensitive.cardnumber.slice(-4);
-        if (sensitive.month) expiryMonth = sensitive.month.padStart(2, '0');
-      } catch { /* non bloquant, dispo plus tard via /api/getcardsensitive */ }
-    }
+    // getcardsensitive ne renvoie PAS le vrai numéro côté serveur : sa réponse documentée
+    // a cardnumber/cvc vides, le numéro n'étant affichable que côté client via l'URL d'embed
+    // signée qu'elle fournit. Pour les 4 derniers chiffres, on utilise plutôt getallcards
+    // (lastfour), qui les renvoie directement pour Visa comme pour Mastercard.
+    // L'expiry réelle n'est disponible nulle part côté serveur pour l'EURO-MASTER/Visacard —
+    // expiryMonth/expiryYear restent une estimation par défaut tant que l'embed n'est pas intégré.
+    try {
+      const list = await getAllCards({ brand, email: user.email as string });
+      const match = list.cards.find(c => c.cardid === pagoRes.cardid);
+      if (match?.lastfour) last4 = match.lastfour.slice(-4);
+    } catch { /* non bloquant */ }
   }
 
   const cardRef = await adminDb.collection('cards').add({
@@ -217,7 +220,15 @@ async function handlePurchase(
         const loadAmountUSD = parseFloat(((tx.initialLoad as number) / 600).toFixed(2));
         const fundRes = await fundCard({ brand, cardid: pagocardsCardId, email: user.email as string, amount: loadAmountUSD });
         if (fundRes.success) {
-          await cardRef.update({ balance: fundRes.balance ?? loadAmountUSD });
+          // La doc Pagocards ne renvoie jamais le solde dans la réponse de fundcard, et pour
+          // l'EURO-MASTER le montant réellement crédité sur la carte (en EUR) diffère du
+          // montant USDC envoyé (conversion FX + frais) — on relit donc le solde exact.
+          try {
+            const fresh = await getCard({ brand, cardid: pagocardsCardId, email: user.email as string });
+            await cardRef.update({ balance: fresh.balance ?? loadAmountUSD });
+          } catch {
+            await cardRef.update({ balance: loadAmountUSD });
+          }
           await adminDb.collection('platform_revenue').add({
             type: 'reload_fee',
             userId: tx.userId,
@@ -279,9 +290,14 @@ async function handleReload(
     });
     if (!pagoRes.success) throw new Error(pagoRes.message || 'Fund failed');
 
-    if (pagoRes.balance !== undefined) {
-      await cardDoc.ref.update({ balance: pagoRes.balance });
-    } else {
+    // La doc Pagocards ne renvoie jamais le solde dans la réponse de fundcard. Pour
+    // l'EURO-MASTER en particulier, le montant réellement crédité (en EUR) diffère du
+    // montant USDC envoyé (conversion FX + frais) — on relit donc le solde exact plutôt
+    // que de deviner en incrémentant localement.
+    try {
+      const fresh = await getCard({ brand, cardid: card.pagocardsCardId as string, email: card.email as string });
+      await cardDoc.ref.update({ balance: fresh.balance ?? FieldValue.increment(amountUSD) });
+    } catch {
       await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
     }
   }

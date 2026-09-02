@@ -30,13 +30,12 @@ export async function POST(req: NextRequest) {
     const card = cardDoc.data()!;
     if (card.userId !== user.uid) return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 });
 
-    // Le retrait est disponible pour les cartes EURO-MASTER (Mastercard classique) et pour
-    // toute la nouvelle gamme 4XXBINs (Visa 493BIN et Mastercard 536BIN). Il n'est pas
-    // documenté par Pagocards pour la Visacard classique.
+    // Doc Pagocards : le retrait 4XXBINs n'est documenté QUE pour les cartes 400BIN/493BIN
+    // (Visa) — pas pour 536_master (Mastercard). L'EURO-MASTER classique reste disponible.
     const isClassicMastercard = card.apiFamily !== '4xxbins' && card.brand === 'mastercard';
-    const is4xxbins = card.apiFamily === '4xxbins';
+    const is4xxbins = card.apiFamily === '4xxbins' && card.productCode !== '536_master';
     if (!isClassicMastercard && !is4xxbins)
-      return NextResponse.json({ success: false, error: 'Le retrait est disponible uniquement pour les cartes Mastercard ou la nouvelle gamme de cartes.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Le retrait est disponible uniquement pour les cartes Mastercard (EURO-MASTER) ou Visa nouvelle génération.' }, { status: 400 });
     if (card.status !== 'active')
       return NextResponse.json({ success: false, error: 'Carte non active.' }, { status: 400 });
 

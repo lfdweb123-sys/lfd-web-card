@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, rateLimit } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
-import { checkGiftcardSkuAvailability } from '@/lib/pagocards';
+import { checkGiftcardSkuAvailability, getGiftcardBySku } from '@/lib/pagocards';
 import { generatePaymentLink } from '@/lib/payment-gateway';
 import { BuyGiftcardSchema } from '@/lib/validations';
 
@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     if (!parsed.success)
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
     const { sku, title, quantity, amountUSD, country } = parsed.data;
+
+    // On ne gère pas encore la conversion FX pour les cartes cadeaux libellées dans une devise
+    // autre que USD (la doc Pagocards documente un endpoint getexchangerates dédié à ce cas,
+    // qu'on n'a pas encore intégré) — on refuse donc explicitement plutôt que de facturer un
+    // montant FCFA calculé sur un mauvais taux.
+    const giftcard = await getGiftcardBySku(sku);
+    if (giftcard.currency && giftcard.currency.toUpperCase() !== 'USD')
+      return NextResponse.json({ success: false, error: 'Cette carte cadeau est libellée dans une devise non prise en charge pour le moment.' }, { status: 400 });
 
     // Vérifie en direct auprès de Pagocards que cette combinaison sku/quantité/prix est disponible
     // avant d'encaisser le client (catalogue et prix peuvent changer côté fournisseur).
