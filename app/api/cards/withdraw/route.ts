@@ -5,6 +5,7 @@ import { getMastercard, withdrawMastercard } from '@/lib/pagocards';
 import { getCard4xx, withdrawCard4xx } from '@/lib/pagocards-4xxbins';
 import { sendPushToUser } from '@/lib/push';
 import { FEEXPAY_NETWORKS, isAutoPayoutEligible, payoutAndAwaitResult, type FeexPayNetwork } from '@/lib/feexpay';
+import { createVerzaPayout, isVerzaPayoutCountry, VERZAPAY_PAYOUT_COUNTRIES } from '@/lib/verzapay';
 import { z } from 'zod';
 
 const XOF_RATE = 600; // taux interne fixe USD -> XOF, cohérent avec le rechargement
@@ -99,21 +100,23 @@ export async function POST(req: NextRequest) {
       await cardRef.update({ balance: Math.max(0, liveBalance - amount) });
     }
 
-    // ── Tentative de virement automatique (FeexPay) ──────────────────────────────
-    // Si aucun réseau n'est fourni, si le réseau exige un OTP (impossible à automatiser
-    // sans intervention du bénéficiaire), ou si le montant est sous le minimum du réseau,
-    // on saute directement en file manuelle — comportement identique à avant.
-    // VerzaPay (second prestataire prévu par le client) n'est pas encore intégré : faute de
-    // documentation, aucun appel n'est fait à sa place plutôt que d'inventer une intégration
-    // non vérifiée qui manipulerait de l'argent réel.
+    // ── Tentative de virement automatique : FeexPay d'abord, VerzaPay en secours ──
+    // Si aucun réseau/numéro n'est fourni, si le réseau exige un OTP (impossible à
+    // automatiser sans intervention du bénéficiaire), ou si le montant est sous le minimum,
+    // FeexPay est sauté. S'il échoue (ex. solde FeexPay insuffisant) ou est sauté, on tente
+    // VerzaPay avec le même numéro si le pays du client supporte son décaissement. Si les
+    // deux échouent ou sont inéligibles, on retombe en file manuelle — comportement inchangé.
     let autoResult: 'sent' | 'failed_fallback' | 'pending_fallback' | 'error_fallback' | 'skipped' = 'skipped';
+    let payoutProvider: 'feexpay' | 'verzapay' | null = null;
     let feexpayReference: string | undefined;
-    let feexpayNote: string | undefined;
+    let verzapayPayoutId: string | undefined;
+    let payoutNote: string | undefined;
 
     const networkCfg = network ? FEEXPAY_NETWORKS[network] : undefined;
-    const eligible = network && phoneNumber && networkCfg && isAutoPayoutEligible(network) && amountXOF >= networkCfg.minAmountXOF;
+    const feexpayEligible = network && phoneNumber && networkCfg && isAutoPayoutEligible(network) && amountXOF >= networkCfg.minAmountXOF;
 
-    if (eligible) {
+    if (feexpayEligible) {
+      payoutProvider = 'feexpay';
       try {
         const result = await payoutAndAwaitResult({
           network, phoneNumber: phoneNumber!, amount: amountXOF,
@@ -124,23 +127,54 @@ export async function POST(req: NextRequest) {
           autoResult = 'sent';
         } else if (result.resolved && !result.success) {
           autoResult = 'failed_fallback';
-          feexpayNote = result.finalStatus?.reason || result.finalStatus?.responsemsg;
+          payoutNote = result.finalStatus?.reason || result.finalStatus?.responsemsg;
         } else {
           autoResult = 'pending_fallback'; // toujours PENDING après les tentatives de vérification
         }
       } catch (err) {
         autoResult = 'error_fallback'; // ex. solde FeexPay insuffisant, erreur réseau, etc.
-        feexpayNote = err instanceof Error ? err.message : 'Erreur FeexPay';
+        payoutNote = err instanceof Error ? err.message : 'Erreur FeexPay';
+      }
+    }
+
+    // Secours VerzaPay : uniquement si FeexPay n'a pas déjà réussi ou n'est pas en attente
+    // de confirmation (jamais deux tentatives en parallèle sur le même retrait).
+    if (autoResult !== 'sent' && autoResult !== 'pending_fallback' && phoneNumber) {
+      const userDoc = await adminDb.collection('users').doc(user.uid).get();
+      const userCountry = (userDoc.data()?.country as string) || '';
+      if (isVerzaPayoutCountry(userCountry)) {
+        try {
+          const intlPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber.replace(/\D/g, '')}`;
+          const payout = await createVerzaPayout({
+            amount: amountXOF,
+            currency: VERZAPAY_PAYOUT_COUNTRIES[userCountry.toUpperCase()],
+            recipientPhone: intlPhone,
+            recipientName: (card.cardholderName as string) || 'Client LFD WEB CARD',
+          });
+          if (payout.id) {
+            payoutProvider = 'verzapay';
+            verzapayPayoutId = payout.id;
+            // Aucune consultation de statut disponible côté VerzaPay — seul le webhook
+            // payout.completed/payout.failed confirmera le résultat final.
+            autoResult = 'pending_fallback';
+            payoutNote = undefined;
+          }
+        } catch (err) {
+          if (payoutProvider !== 'feexpay') payoutProvider = 'verzapay';
+          autoResult = 'error_fallback';
+          payoutNote = err instanceof Error ? err.message : 'Erreur VerzaPay';
+        }
       }
     }
 
     const finalStatus = autoResult === 'sent' ? 'completed' : 'pending_payout';
     await txRef.update({
       status: finalStatus,
-      payoutProvider: autoResult === 'skipped' ? null : 'feexpay',
+      payoutProvider,
       payoutAutoResult: autoResult,
       ...(feexpayReference ? { feexpayReference } : {}),
-      ...(feexpayNote ? { feexpayNote } : {}),
+      ...(verzapayPayoutId ? { verzapayPayoutId } : {}),
+      ...(payoutNote ? { payoutNote } : {}),
       ...(finalStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}),
     });
 

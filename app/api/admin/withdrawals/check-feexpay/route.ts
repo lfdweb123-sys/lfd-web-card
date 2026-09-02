@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       });
       await sendPushToUser(tx.userId as string, { title, body: message, data: { url: '/dashboard' } });
     } else if (status.status === 'FAILED') {
-      await txRef.update({ payoutAutoResult: 'failed_fallback', feexpayNote: status.reason || status.responsemsg });
+      await txRef.update({ payoutAutoResult: 'failed_fallback', payoutNote: status.reason || status.responsemsg });
     }
 
     return NextResponse.json({ success: true, data: { status: status.status, reason: status.reason } });

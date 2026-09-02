@@ -776,6 +776,11 @@ const WITHDRAW_NETWORKS: { id: string; label: string; country: string }[] = [
   { id: 'mobicash_ml', label: 'Mobicash', country: 'ML' },
 ];
 
+// Pays où VerzaPay peut décaisser (couvre plusieurs pays hors réseau FeexPay : Cameroun,
+// Gabon, Ghana, Guinée, Niger, Nigeria, RD Congo, Rwanda). VerzaPay détecte l'opérateur
+// automatiquement à partir du numéro — pas de sélection de réseau nécessaire pour lui.
+const VERZAPAY_COUNTRIES = ['BJ', 'BF', 'CM', 'CI', 'GA', 'GH', 'GN', 'ML', 'NE', 'NG', 'CD', 'RW', 'SN', 'TG'];
+
 function WithdrawModal({ card, country, defaultPhone, onClose, getToken, onSuccess }: {
   card: VirtualCard; country: string; defaultPhone?: string;
   onClose: () => void; getToken: () => Promise<string>; onSuccess: (msg: string) => void;
@@ -784,6 +789,7 @@ function WithdrawModal({ card, country, defaultPhone, onClose, getToken, onSucce
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const availableNetworks = WITHDRAW_NETWORKS.filter(n => n.country === country.toUpperCase());
+  const autoPayoutAvailable = availableNetworks.length > 0 || VERZAPAY_COUNTRIES.includes(country.toUpperCase());
   const [network, setNetwork] = useState(availableNetworks[0]?.id || '');
   const [phoneNumber, setPhoneNumber] = useState(defaultPhone || '');
 
@@ -806,7 +812,7 @@ function WithdrawModal({ card, country, defaultPhone, onClose, getToken, onSucce
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           cardId: card.id, amount,
-          ...(network && phoneNumber ? { network, phoneNumber: phoneNumber.replace(/\D/g, '') } : {}),
+          ...(phoneNumber ? { phoneNumber: phoneNumber.replace(/\D/g, ''), ...(network ? { network } : {}) } : {}),
         }),
       });
       const data = await res.json();
@@ -849,14 +855,16 @@ function WithdrawModal({ card, country, defaultPhone, onClose, getToken, onSucce
           <p className="text-ink-muted text-xs mb-5">Des frais de ${withdrawFee} sont appliqués par l'émetteur sur les retraits Mastercard.</p>
         )}
 
-        {availableNetworks.length > 0 && (
+        {autoPayoutAvailable && (
           <div className="mb-5 space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">Opérateur Mobile Money</label>
-              <select value={network} onChange={e => setNetwork(e.target.value)} className="input-field text-sm">
-                {availableNetworks.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
-              </select>
-            </div>
+            {availableNetworks.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Opérateur Mobile Money</label>
+                <select value={network} onChange={e => setNetwork(e.target.value)} className="input-field text-sm">
+                  {availableNetworks.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-2">Numéro Mobile Money</label>
               <input type="tel" placeholder="Ex. 2290166000000" value={phoneNumber}

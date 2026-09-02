@@ -564,7 +564,7 @@ export default function AdminPage() {
   // Onglet Retraits
   const [withdrawals, setWithdrawals] = useState<{
     id: string; userId: string; cardId: string; amountUSD: number; amount: number; createdAt: string; status: string;
-    payoutProvider?: string | null; payoutAutoResult?: string; feexpayNote?: string;
+    payoutProvider?: string | null; payoutAutoResult?: string; payoutNote?: string;
   }[]>([]);
   const [wdPage, setWdPage] = useState(1);
   const [wdHasMore, setWdHasMore] = useState(false);
@@ -1157,11 +1157,14 @@ export default function AdminPage() {
                       <td className="px-4 py-3 font-medium">${w.amountUSD} <span className="text-ink-muted font-normal">(~{w.amount?.toLocaleString()} FCFA)</span></td>
                       <td className="px-4 py-3 text-ink-muted">{formatDateTime(w.createdAt)}</td>
                       <td className="px-4 py-3">
-                        {w.payoutAutoResult === 'sent' ? <span className="badge-green">FeexPay ✓</span>
-                          : w.payoutAutoResult === 'pending_fallback' ? <span className="badge-orange">FeexPay en cours…</span>
-                          : w.payoutAutoResult === 'failed_fallback' ? <span title={w.feexpayNote} className="badge-red">FeexPay échoué</span>
-                          : w.payoutAutoResult === 'error_fallback' ? <span title={w.feexpayNote} className="badge-red">Erreur FeexPay</span>
-                          : <span className="text-ink-muted text-xs">Manuel</span>}
+                        {(() => {
+                          const providerLabel = w.payoutProvider === 'verzapay' ? 'VerzaPay' : w.payoutProvider === 'feexpay' ? 'FeexPay' : 'Auto';
+                          if (w.payoutAutoResult === 'sent') return <span className="badge-green">{providerLabel} ✓</span>;
+                          if (w.payoutAutoResult === 'pending_fallback') return <span className="badge-orange">{providerLabel} en cours…</span>;
+                          if (w.payoutAutoResult === 'failed_fallback') return <span title={w.payoutNote} className="badge-red">{providerLabel} échoué</span>;
+                          if (w.payoutAutoResult === 'error_fallback') return <span title={w.payoutNote} className="badge-red">Erreur {providerLabel}</span>;
+                          return <span className="text-ink-muted text-xs">Manuel</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         {w.status === 'pending_payout' ? (
@@ -1176,11 +1179,15 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         {w.status === 'pending_payout' ? (
-                          w.payoutAutoResult === 'pending_fallback' ? (
+                          w.payoutAutoResult === 'pending_fallback' && w.payoutProvider === 'feexpay' ? (
                             <button onClick={() => checkFeexpayStatus(w.id)} disabled={wdActionId === w.id}
                               className="inline-flex items-center gap-1.5 text-brand-orange text-xs font-medium hover:underline disabled:opacity-50">
                               <RefreshCw size={13} className={wdActionId === w.id ? 'animate-spin' : ''} />{wdActionId === w.id ? 'Vérification...' : 'Vérifier FeexPay'}
                             </button>
+                          ) : w.payoutAutoResult === 'pending_fallback' && w.payoutProvider === 'verzapay' ? (
+                            <span className="text-ink-muted text-xs" title="Aucune consultation de statut disponible côté VerzaPay — seul leur webhook confirmera. Ne pas payer manuellement avant confirmation ou échec.">
+                              En attente webhook VerzaPay
+                            </span>
                           ) : (
                             <button onClick={() => markWithdrawalPaid(w.id)} disabled={wdActionId === w.id}
                               className="inline-flex items-center gap-1.5 text-brand-green text-xs font-medium hover:underline disabled:opacity-50">
