@@ -55,14 +55,17 @@ export async function POST(req: NextRequest) {
   const tx = txDoc.data()!;
   if (tx.status === 'success') return OK();
 
-  // ⚠️ SÉCURITÉ CRITIQUE — cet endpoint est public et n'est protégé par aucune signature.
+  // ⚠️ SÉCURITÉ CRITIQUE — cet endpoint est public et n'est protégé par aucune signature
+  // (confirmé par la doc officielle de la passerelle : aucun mécanisme de signature n'y est
+  // documenté, le routage webhook ne se fait que par correspondance de hostname sur "origin").
   // Le corps de la requête (event/transaction.status) est donc entièrement falsifiable :
   // n'importe qui connaissant ou devinant un transactionId pourrait POSTer directement ici
   // (même depuis la console d'un navigateur) pour se faire créditer une carte ou un
   // rechargement sans jamais payer. On ne fait donc JAMAIS confiance au statut annoncé par
-  // le corps de la requête pour une réussite : on revérifie toujours le statut réel
-  // directement auprès de la passerelle, avec notre propre clé API (jamais exposée côté
-  // client), avant de créditer quoi que ce soit.
+  // le corps de la requête pour une réussite : on revérifie toujours le statut réel via
+  // GET /api/gateway/verify/:id (doc confirmée — réponse { success, status, reference,
+  // amount, provider }), avec notre propre clé API jamais exposée côté client, et on
+  // recoupe même le montant avant de créditer quoi que ce soit.
   if (isSuccess) {
     if (!tx.pid) {
       await txDoc.ref.update({ status: 'error', errorMessage: 'Webhook reçu sans référence de paiement vérifiable — refusé par sécurité.', completedAt: new Date().toISOString() });
@@ -70,9 +73,14 @@ export async function POST(req: NextRequest) {
     }
     let verified = false;
     try {
-      const verification = await verifyPayment(tx.pid as string) as { success?: boolean; status?: string };
+      const verification = await verifyPayment(tx.pid as string) as { success?: boolean; status?: string; amount?: number };
       const verifiedStatus = String(verification?.status || '').toLowerCase();
-      verified = verification?.success === true || ['successful', 'success', 'completed', 'paid'].includes(verifiedStatus);
+      const statusOk = verification?.success === true || ['successful', 'success', 'completed', 'paid'].includes(verifiedStatus);
+      // Le montant vérifié doit correspondre à ce que le client était censé payer (tx.total) —
+      // en dernier recours, à tx.amount pour les anciennes transactions sans champ total.
+      const expectedAmount = (tx.total ?? tx.amount) as number | undefined;
+      const amountOk = verification?.amount === undefined || expectedAmount === undefined || verification.amount === expectedAmount;
+      verified = statusOk && amountOk;
     } catch { verified = false; }
 
     if (!verified) {
