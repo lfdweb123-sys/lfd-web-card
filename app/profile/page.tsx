@@ -15,7 +15,7 @@ import {
   Lock, Eye, EyeOff, CheckCircle, XCircle, Clock,
   Shield, AlertCircle, ChevronRight, Save, Loader2,
   LogOut, Bell, Home, TrendingUp, Menu, X, Camera,
-  Edit3, Check, Gift,
+  Edit3, Check, Gift, Settings, MapPin, Calendar,
 } from 'lucide-react';
 
 // ── Country list (Africa-first) ───────────────────────────────────
@@ -257,6 +257,9 @@ export default function ProfilePage() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeLoading, setPromoCodeLoading] = useState(false);
 
+  // Onglets des paramètres
+  const [activeTab, setActiveTab] = useState<'profile' | 'referral' | 'kyc' | 'security' | 'account'>('profile');
+
   // ── Init ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authLoading && !firebaseUser) { router.push('/auth/login'); return; }
@@ -392,6 +395,14 @@ export default function ProfilePage() {
     return { label: 'Excellent', color: 'bg-brand-green', width: 'w-full' };
   })();
 
+  const TABS: { id: typeof activeTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'profile', label: 'Profil', icon: <User size={15} /> },
+    { id: 'referral', label: 'Parrainage', icon: <Gift size={15} /> },
+    { id: 'kyc', label: 'Vérification', icon: <Shield size={15} /> },
+    { id: 'security', label: 'Sécurité', icon: <Lock size={15} /> },
+    { id: 'account', label: 'Mon compte', icon: <Settings size={15} /> },
+  ];
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-bg">
@@ -424,54 +435,87 @@ export default function ProfilePage() {
           </Link>
 
           {/* ── Profile hero ───────────────────────────────────── */}
-          <div className="card p-6 sm:p-7 mb-5">
-            <div className="flex items-start gap-5">
-              {/* Avatar */}
-              <div className="relative flex-shrink-0">
-                <div className="w-20 h-20 bg-gradient-to-br from-brand-orange to-orange-600 rounded-3xl flex items-center justify-center shadow-orange">
-                  <span className="text-white text-2xl font-bold">{userInitials}</span>
-                </div>
-                {/* Verified tick */}
-                {kyc?.status === 'approved' && (
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-brand-green rounded-full flex items-center justify-center border-2 border-white">
-                    <Check size={12} className="text-white" />
+          <div className="card overflow-hidden mb-5">
+            {/* Cover banner */}
+            <div className="h-20 sm:h-24 stripes-dark relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-orange/30 via-transparent to-transparent" />
+            </div>
+
+            <div className="px-5 sm:px-7 pb-6 sm:pb-7">
+              <div className="flex items-end justify-between -mt-10 sm:-mt-12 mb-4">
+                {/* Avatar overlapping banner */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-brand-orange to-orange-600 rounded-3xl flex items-center justify-center shadow-orange ring-4 ring-white">
+                    <span className="text-white text-2xl sm:text-3xl font-bold">{userInitials}</span>
                   </div>
-                )}
+                  {/* Verified tick */}
+                  {kyc?.status === 'approved' && (
+                    <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand-green rounded-full flex items-center justify-center border-2 border-white">
+                      <Check size={13} className="text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="hidden sm:block pb-1">
+                  <KycBadge status={kyc?.status || null} />
+                </div>
               </div>
 
               {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
-                    <h1 className="text-xl font-bold truncate">{userName}</h1>
-                    <p className="text-ink-secondary text-sm">{appUser?.email || firebaseUser?.email}</p>
-                  </div>
+              <div>
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:hidden mb-1">
+                  <h1 className="text-xl font-bold truncate">{userName}</h1>
                   <KycBadge status={kyc?.status || null} />
                 </div>
+                <h1 className="hidden sm:block text-2xl font-bold truncate">{userName}</h1>
+                <p className="text-ink-secondary text-sm mt-0.5">{appUser?.email || firebaseUser?.email}</p>
 
-                <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-ink-muted">
+                <div className="flex flex-wrap items-center gap-2 mt-4">
                   {countryObj && (
-                    <span className="flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 bg-surface-muted border border-surface-border text-ink-secondary text-xs font-medium px-3 py-1.5 rounded-full">
+                      <MapPin size={12} className="text-ink-muted" />
                       <span>{countryObj.flag}</span> {countryObj.name}
                     </span>
                   )}
                   {appUser?.status && (
-                    <span className={`flex items-center gap-1 font-medium ${appUser.status === 'active' ? 'text-brand-green' : 'text-red-500'}`}>
-                      ● {appUser.status === 'active' ? 'Compte actif' : 'Suspendu'}
+                    <span className={`inline-flex items-center gap-1.5 border text-xs font-medium px-3 py-1.5 rounded-full
+                      ${appUser.status === 'active' ? 'bg-brand-green-light border-brand-green/20 text-green-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${appUser.status === 'active' ? 'bg-brand-green' : 'bg-red-500'}`} />
+                      {appUser.status === 'active' ? 'Compte actif' : 'Suspendu'}
                     </span>
                   )}
                   {appUser?.createdAt && (
-                    <span>Membre depuis {formatDate(appUser.createdAt, { month: 'long', year: 'numeric' })}</span>
+                    <span className="inline-flex items-center gap-1.5 bg-surface-muted border border-surface-border text-ink-secondary text-xs font-medium px-3 py-1.5 rounded-full">
+                      <Calendar size={12} className="text-ink-muted" />
+                      Membre depuis {formatDate(appUser.createdAt, { month: 'long', year: 'numeric' })}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Sections ──────────────────────────────────────── */}
+          {/* ── Tab bar ──────────────────────────────────────── */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-5 -mx-1 px-1">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold whitespace-nowrap transition-all duration-150
+                  ${activeTab === tab.id
+                    ? 'bg-brand-orange text-white shadow-orange'
+                    : 'bg-white border border-surface-border text-ink-secondary hover:text-ink-primary hover:border-ink-muted/40'}`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Tab content ──────────────────────────────────── */}
           <div className="space-y-5">
 
-            {/* 1 — Informations personnelles */}
+            {/* Profil — Informations personnelles */}
+            {activeTab === 'profile' && (
             <Section title="Informations personnelles" subtitle="Modifiez vos informations de profil.">
               <div className="space-y-4">
                 {/* Nom complet */}
@@ -550,8 +594,10 @@ export default function ProfilePage() {
                 </button>
               </div>
             </Section>
+            )}
 
-            {/* 1bis — Code parrain */}
+            {/* Parrainage — Code parrain */}
+            {activeTab === 'referral' && (
             <Section title="Code parrain" subtitle="Renseignez le code de la personne qui vous a recommandé (une seule fois).">
               {appUser?.referredBy ? (
                 <div className="flex items-center gap-2 bg-brand-green-light border border-brand-green/20 rounded-2xl p-3.5 text-sm text-green-700">
@@ -577,8 +623,10 @@ export default function ProfilePage() {
                 </div>
               )}
             </Section>
+            )}
 
-            {/* 2 — Statut KYC */}
+            {/* Vérification — Statut KYC */}
+            {activeTab === 'kyc' && (
             <Section title="Vérification d'identité (KYC)" subtitle="Statut de votre dossier de vérification.">
               {kycLoading ? (
                 <div className="flex items-center gap-2 text-ink-muted text-sm py-2">
@@ -654,8 +702,11 @@ export default function ProfilePage() {
                 </div>
               )}
             </Section>
+            )}
 
-            {/* 3 — Sécurité / Mot de passe */}
+            {/* Sécurité — Mot de passe + Zone de danger */}
+            {activeTab === 'security' && (
+            <>
             <Section title="Sécurité" subtitle="Modifiez votre mot de passe de connexion.">
               <div className="space-y-4">
                 {/* Current password */}
@@ -778,7 +829,21 @@ export default function ProfilePage() {
               </div>
             </Section>
 
-            {/* 4 — Compte */}
+            <div className="card p-6 border border-red-100">
+              <h2 className="font-bold text-lg mb-1 text-red-600">Zone de danger</h2>
+              <p className="text-ink-secondary text-sm mb-4">Actions irréversibles concernant votre compte.</p>
+              <button
+                onClick={async () => { await logout(); router.push('/'); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
+              >
+                <LogOut size={16} /> Se déconnecter de tous les appareils
+              </button>
+            </div>
+            </>
+            )}
+
+            {/* Mon compte */}
+            {activeTab === 'account' && (
             <Section title="Mon compte" subtitle="Informations et statut de votre compte.">
               <div className="space-y-3">
                 {[
@@ -797,18 +862,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             </Section>
-
-            {/* 5 — Danger zone */}
-            <div className="card p-6 border border-red-100">
-              <h2 className="font-bold text-lg mb-1 text-red-600">Zone de danger</h2>
-              <p className="text-ink-secondary text-sm mb-4">Actions irréversibles concernant votre compte.</p>
-              <button
-                onClick={async () => { await logout(); router.push('/'); }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
-              >
-                <LogOut size={16} /> Se déconnecter de tous les appareils
-              </button>
-            </div>
+            )}
 
           </div>
         </main>
