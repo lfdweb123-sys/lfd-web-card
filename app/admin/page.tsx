@@ -35,6 +35,8 @@ const NAV_ITEMS = [
   { id: 'withdrawals', label: 'Retraits', icon: <ArrowDownLeft size={18} /> },
   { id: 'referrers', label: 'Parrains', icon: <Gift size={18} /> },
   { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+  { id: 'pagocards', label: 'Soldes émetteur', icon: <CreditCard size={18} /> },
+  { id: 'payouts', label: 'Payouts', icon: <Send size={18} /> },
 ];
 
 // ── Sidebar desktop ───────────────────────────────────────────────
@@ -157,6 +159,311 @@ function TxBadge({ s }: { s: string }) {
   if (s === 'failed') return <span className="badge-red">✗ Échoué</span>;
   if (s === 'pending_payout') return <span className="badge-orange">◷ Virement en cours</span>;
   return <span className="badge-orange">◷ Attente</span>;
+}
+
+// ── Onglet Pagocards (soldes wallet / transactions / dépôts émetteur) ──
+interface PagoBalance { master_wallet_balance: number; visa_wallet_balance: number; giftcard_wallet_balance: number; sepa_wallet_balance?: number; }
+interface PagoAdminTx { uuid: string; description: string; amount: string; }
+interface PagoAdminDeposit { amount: string; status: string; }
+
+function PagocardsWalletTab({ getToken }: { getToken: () => Promise<string> }) {
+  const [balance, setBalance] = useState<PagoBalance | null>(null);
+  const [transactions, setTransactions] = useState<PagoAdminTx[]>([]);
+  const [deposits, setDeposits] = useState<PagoAdminDeposit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const token = await getToken();
+      const headers = { Authorization: `Bearer ${token}` };
+      const [b, t, d] = await Promise.all([
+        fetch('/api/admin/pagocards/balance', { headers }),
+        fetch('/api/admin/pagocards/transactions', { headers }),
+        fetch('/api/admin/pagocards/deposits', { headers }),
+      ]);
+      const [bd, td, dd] = await Promise.all([b.json(), t.json(), d.json()]);
+      if (bd.success) setBalance(bd.data); else setError(bd.error || 'Erreur solde émetteur.');
+      if (td.success) setTransactions(td.data.transactions || []);
+      if (dd.success) setDeposits(dd.data.deposits || []);
+    } catch { setError('Erreur réseau.'); }
+    finally { setLoading(false); }
+  }, [getToken]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Soldes émetteur</h1>
+        <button onClick={fetchAll} disabled={loading} className="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualiser
+        </button>
+      </div>
+      <p className="text-ink-secondary text-sm -mt-3">Soldes des portefeuilles chez votre émetteur de cartes, et mouvements récents.</p>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-sm">{error}</div>}
+
+      {loading && !balance ? (
+        <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-brand-orange" /></div>
+      ) : balance && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            ['Mastercard (EURO-MASTER)', balance.master_wallet_balance, 'EUR'],
+            ['Visa', balance.visa_wallet_balance, 'USD'],
+            ['Cartes cadeaux', balance.giftcard_wallet_balance, 'USD'],
+            ...(balance.sepa_wallet_balance !== undefined ? [['SEPA', balance.sepa_wallet_balance, 'EUR']] : []),
+          ].map(([label, value, cur]) => (
+            <div key={label as string} className="card p-5">
+              <div className="text-ink-muted text-xs font-medium mb-1">{label as string}</div>
+              <div className="text-2xl font-bold">{(value as number).toLocaleString()} <span className="text-sm font-medium text-ink-secondary">{cur as string}</span></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-5">
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-surface-border font-semibold text-sm">Transactions récentes</div>
+          {transactions.length === 0 ? (
+            <div className="p-6 text-center text-ink-muted text-sm">Aucune transaction.</div>
+          ) : (
+            <div className="divide-y divide-surface-border max-h-96 overflow-y-auto">
+              {transactions.map(t => (
+                <div key={t.uuid} className="flex items-center justify-between p-4 text-sm">
+                  <span className="text-ink-secondary truncate pr-3">{t.description}</span>
+                  <span className="font-medium flex-shrink-0">{t.amount}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-surface-border font-semibold text-sm">Dépôts récents</div>
+          {deposits.length === 0 ? (
+            <div className="p-6 text-center text-ink-muted text-sm">Aucun dépôt.</div>
+          ) : (
+            <div className="divide-y divide-surface-border max-h-96 overflow-y-auto">
+              {deposits.map((d, i) => (
+                <div key={i} className="flex items-center justify-between p-4 text-sm">
+                  <span className="font-medium">{d.amount}</span>
+                  <TxBadge s={d.status} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Onglet Payouts (virement du wallet plateforme vers une banque) ────
+function PayoutsTab({ getToken }: { getToken: () => Promise<string> }) {
+  const [rail, setRail] = useState<'ach' | 'sepa'>('ach');
+
+  // ACH
+  const [achAmount, setAchAmount] = useState('');
+  const [achQuote, setAchQuote] = useState<Record<string, unknown> | null>(null);
+  const [achForm, setAchForm] = useState({
+    account_type: 'checking', account_number: '', routing_number: '', bank_name: '',
+    bank_address: '', post_code: '', city: '', state: '', country: 'US',
+    beneficiary_type: 'individual', beneficiary_name: '', beneficiary_state: '', beneficiary_city: '',
+    beneficiary_address: '', beneficiary_post_code: '',
+  });
+
+  // SEPA
+  const [sepaForm, setSepaForm] = useState({
+    sourceAmount: '', destinationCountry: '', nickname: '', bank_name: '', iban: '', bic_swift: '',
+    street: '', city: '', state_province: '', postal_code: '',
+  });
+  const [sepaQuote, setSepaQuote] = useState<Record<string, unknown> | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const achGetQuote = async () => {
+    setLoading(true); setResult(null); setAchQuote(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/admin/payouts/ach/quote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: achAmount }),
+      });
+      const data = await res.json();
+      if (!data.success) { setResult({ message: data.error, type: 'error' }); return; }
+      setAchQuote(data.data);
+    } catch { setResult({ message: 'Erreur réseau.', type: 'error' }); }
+    finally { setLoading(false); }
+  };
+
+  const achConfirm = async () => {
+    if (!achQuote) return;
+    setLoading(true); setResult(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/admin/payouts/ach/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          quoteId: (achQuote as { quoteId: string }).quoteId,
+          account_type: achForm.account_type, account_number: achForm.account_number,
+          routing_number: achForm.routing_number, bank_name: achForm.bank_name,
+          bank_address: achForm.bank_address, post_code: achForm.post_code,
+          city: achForm.city, state: achForm.state, country: achForm.country,
+          beneficiary: {
+            type: achForm.beneficiary_type, account_name: achForm.beneficiary_name,
+            state: achForm.beneficiary_state, city: achForm.beneficiary_city,
+            address: achForm.beneficiary_address, post_code: achForm.beneficiary_post_code,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) { setResult({ message: data.error, type: 'error' }); return; }
+      setResult({ message: 'Virement ACH confirmé avec succès.', type: 'success' });
+      setAchQuote(null);
+    } catch { setResult({ message: 'Erreur réseau.', type: 'error' }); }
+    finally { setLoading(false); }
+  };
+
+  const sepaGetQuote = async () => {
+    setLoading(true); setResult(null); setSepaQuote(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/admin/payouts/sepa/quote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...sepaForm, sourceAmount: Number(sepaForm.sourceAmount) }),
+      });
+      const data = await res.json();
+      if (!data.success) { setResult({ message: data.error, type: 'error' }); return; }
+      setSepaQuote(data.data);
+    } catch { setResult({ message: 'Erreur réseau.', type: 'error' }); }
+    finally { setLoading(false); }
+  };
+
+  const sepaConfirm = async () => {
+    if (!sepaQuote) return;
+    setLoading(true); setResult(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/admin/payouts/sepa/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ quoteid: (sepaQuote as { quoteId: string }).quoteId }),
+      });
+      const data = await res.json();
+      if (!data.success) { setResult({ message: data.error, type: 'error' }); return; }
+      setResult({ message: 'Virement SEPA confirmé avec succès.', type: 'success' });
+      setSepaQuote(null);
+    } catch { setResult({ message: 'Erreur réseau.', type: 'error' }); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <h1 className="text-2xl font-bold">Payouts</h1>
+      <p className="text-ink-secondary text-sm -mt-3">
+        Virement du solde de votre wallet émetteur vers un compte bancaire réel. USD par ACH (banques américaines) ou EUR par SEPA Instant (banques européennes).
+      </p>
+
+      <div className="flex gap-2">
+        <button onClick={() => { setRail('ach'); setResult(null); }} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${rail === 'ach' ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>ACH (USD)</button>
+        <button onClick={() => { setRail('sepa'); setResult(null); }} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${rail === 'sepa' ? 'bg-brand-orange text-white' : 'bg-surface-muted text-ink-secondary'}`}>SEPA (EUR)</button>
+      </div>
+
+      {result && (
+        <div className={`rounded-2xl p-3.5 text-sm ${result.type === 'success' ? 'bg-brand-green-light text-green-700' : 'bg-red-50 text-red-700'}`}>{result.message}</div>
+      )}
+
+      {rail === 'ach' ? (
+        <div className="card p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Montant (USD)</label>
+            <input type="text" value={achAmount} onChange={e => setAchAmount(e.target.value)} placeholder="1000" className="input-field text-sm" />
+          </div>
+          {!achQuote ? (
+            <button onClick={achGetQuote} disabled={loading || !achAmount} className="btn-secondary w-full py-2.5 text-sm">
+              {loading ? 'Chargement...' : 'Obtenir un devis'}
+            </button>
+          ) : (
+            <>
+              <div className="bg-surface-muted rounded-2xl p-4 text-sm space-y-1.5">
+                {Object.entries(achQuote).map(([k, v]) => (
+                  <div key={k} className="flex justify-between"><span className="text-ink-secondary">{k}</span><span className="font-medium">{String(v)}</span></div>
+                ))}
+              </div>
+              <h3 className="font-semibold text-sm pt-2">Coordonnées bancaires du bénéficiaire</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <select value={achForm.account_type} onChange={e => setAchForm(f => ({ ...f, account_type: e.target.value }))} className="input-field text-sm">
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                </select>
+                <select value={achForm.beneficiary_type} onChange={e => setAchForm(f => ({ ...f, beneficiary_type: e.target.value }))} className="input-field text-sm">
+                  <option value="individual">Individual</option>
+                  <option value="business">Business</option>
+                </select>
+                {[
+                  ['account_number', 'Numéro de compte'], ['routing_number', 'Routing number'],
+                  ['bank_name', 'Nom de la banque'], ['bank_address', 'Adresse banque'],
+                  ['post_code', 'Code postal banque'], ['city', 'Ville banque'], ['state', 'État banque'],
+                  ['beneficiary_name', 'Nom du bénéficiaire'], ['beneficiary_state', 'État bénéficiaire'],
+                  ['beneficiary_city', 'Ville bénéficiaire'], ['beneficiary_address', 'Adresse bénéficiaire'],
+                  ['beneficiary_post_code', 'Code postal bénéficiaire'],
+                ].map(([key, label]) => (
+                  <input key={key} type="text" placeholder={label}
+                    value={(achForm as Record<string, string>)[key]}
+                    onChange={e => setAchForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="input-field text-sm" />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setAchQuote(null)} className="btn-secondary flex-1 py-2.5 text-sm">Annuler</button>
+                <button onClick={achConfirm} disabled={loading} className="btn-primary flex-1 py-2.5 text-sm">
+                  {loading ? 'Confirmation...' : 'Confirmer le virement'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="card p-5 space-y-4">
+          {!sepaQuote ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['sourceAmount', 'Montant (USDC)'], ['destinationCountry', 'Pays destination (ex. DE)'],
+                  ['nickname', 'Nom du bénéficiaire'], ['bank_name', 'Nom de la banque'],
+                  ['iban', 'IBAN'], ['bic_swift', 'BIC/SWIFT'], ['street', 'Rue'], ['city', 'Ville'],
+                  ['state_province', 'Région/État'], ['postal_code', 'Code postal'],
+                ].map(([key, label]) => (
+                  <input key={key} type="text" placeholder={label}
+                    value={(sepaForm as Record<string, string>)[key]}
+                    onChange={e => setSepaForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="input-field text-sm" />
+                ))}
+              </div>
+              <button onClick={sepaGetQuote} disabled={loading} className="btn-secondary w-full py-2.5 text-sm">
+                {loading ? 'Chargement...' : 'Obtenir un devis'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="bg-surface-muted rounded-2xl p-4 text-sm space-y-1.5">
+                {Object.entries(sepaQuote).map(([k, v]) => (
+                  <div key={k} className="flex justify-between"><span className="text-ink-secondary">{k}</span><span className="font-medium">{String(v)}</span></div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setSepaQuote(null)} className="btn-secondary flex-1 py-2.5 text-sm">Annuler</button>
+                <button onClick={sepaConfirm} disabled={loading} className="btn-primary flex-1 py-2.5 text-sm">
+                  {loading ? 'Confirmation...' : 'Confirmer le virement'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminPage() {
@@ -965,6 +1272,10 @@ export default function AdminPage() {
           </button>
         </div>
       );
+
+      case 'pagocards': return <PagocardsWalletTab getToken={getToken} />;
+
+      case 'payouts': return <PayoutsTab getToken={getToken} />;
     }
   };
 

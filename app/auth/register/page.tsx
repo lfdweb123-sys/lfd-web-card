@@ -135,7 +135,7 @@ function RegisterForm() {
               <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
                 <Shield size={16} className="text-blue-400" />
               </div>
-              <span className="text-sm text-white/70">Frais Mobile Money annoncés avant paiement</span>
+              <span className="text-sm text-white/70">Frais annoncés avant paiement</span>
             </div>
           </div>
         </motion.div>

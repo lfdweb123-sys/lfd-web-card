@@ -225,7 +225,7 @@ function BuyModal({ card, country, getToken, onClose, onSuccess, onError }: {
 
         <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
           <div className="flex justify-between mb-2"><span className="text-ink-secondary">{quantity} x ${amountUSD}</span><span className="font-medium">{amountXOF.toLocaleString()} FCFA</span></div>
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais Mobile Money (5%)</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
           <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{total.toLocaleString()} FCFA</span></div>
         </div>
 

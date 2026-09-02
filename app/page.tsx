@@ -135,7 +135,7 @@ function Navbar() {
             {[
               ['#features', 'Fonctionnalités'],
               ['#how', 'Comment ça marche'],
-              ['#pricing', 'Tarifs'],
+              ['/tarifs', 'Tarifs'],
               ['/comparaison', 'Comparatif'],
               ['#faq', 'FAQ'],
             ].map(([href, label]) => (
@@ -184,7 +184,7 @@ function Navbar() {
           {[
             ['#features', 'Fonctionnalités'],
             ['#how', 'Comment ça marche'],
-            ['#pricing', 'Tarifs'],
+            ['/tarifs', 'Tarifs'],
             ['/comparaison', 'Comparatif'],
             ['#faq', 'FAQ'],
           ].map(([href, label]) => (
@@ -408,7 +408,7 @@ function Hero() {
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle size={15} className="text-brand-green" />
-              {isLoggedIn ? 'Support prioritaire' : 'Frais mobile money transparents (5%)'}
+              {isLoggedIn ? 'Support prioritaire' : 'Frais transparents, annoncés avant paiement'}
             </span>
           </div>
         </motion.div>
@@ -741,7 +741,7 @@ function Pricing() {
               5 000 <span className="text-xl font-medium text-ink-secondary">FCFA</span>
             </div>
             <p className="text-ink-secondary text-sm mb-6">
-              + 5% de frais Mobile Money, affichés avant paiement. Carte valable 3 ans.
+              + frais de service, affichés avant paiement. Carte valable 3 ans.
             </p>
             <ul className="space-y-3 mb-7">
               {[
@@ -774,10 +774,10 @@ function Pricing() {
             </div>
             <h3 className="font-bold text-xl mb-2">Rechargement</h3>
             <div className="text-4xl font-bold mb-1 text-brand-green">
-              5% <span className="text-xl font-medium text-ink-secondary">de frais</span>
+              Frais <span className="text-xl font-medium text-ink-secondary">transparents</span>
             </div>
             <p className="text-ink-secondary text-sm mb-6">
-              Rechargez le montant que vous voulez.
+              Rechargez le montant que vous voulez, frais affichés avant paiement.
             </p>
             <ul className="space-y-3 mb-7">
               {[
@@ -803,6 +803,11 @@ function Pricing() {
             )}
           </StaggerItem>
         </Stagger>
+        <FadeIn className="text-center mt-10">
+          <Link href="/tarifs" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-orange hover:underline">
+            Voir le détail complet des tarifs →
+          </Link>
+        </FadeIn>
       </div>
     </section>
   );
@@ -984,6 +989,11 @@ function Footer() {
               <li>
                 <Link href="/comparaison" className="hover:text-ink-primary transition-colors">
                   Comparatif
+                </Link>
+              </li>
+              <li>
+                <Link href="/tarifs" className="hover:text-ink-primary transition-colors">
+                  Tarifs
                 </Link>
               </li>
             </ul>

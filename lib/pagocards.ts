@@ -14,10 +14,14 @@ async function request<T>(
   method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
   body?: Record<string, unknown>,
+  idempotencyKey?: string,
 ): Promise<T> {
+  const headers = body ? authHeaders({ 'Content-Type': 'application/json' }) : authHeaders();
+  if (idempotencyKey) (headers as Record<string, string>)['Idempotency-Key'] = idempotencyKey;
+
   const res = await fetch(`${BASE}${endpoint}`, {
     method,
-    headers: body ? authHeaders({ 'Content-Type': 'application/json' }) : authHeaders(),
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
   });
@@ -32,7 +36,10 @@ async function request<T>(
 }
 
 const get = <T>(endpoint: string) => request<T>('GET', endpoint);
-const post = <T>(endpoint: string, body: Record<string, unknown>) => request<T>('POST', endpoint, body);
+// Idempotency-Key : optionnelle d'après la doc, mais recommandée sur les endpoints qui
+// déplacent réellement de l'argent (payouts ACH/SEPA notamment).
+const post = <T>(endpoint: string, body: Record<string, unknown>, idempotencyKey?: string) =>
+  request<T>('POST', endpoint, body, idempotencyKey);
 const put = <T>(endpoint: string, body: Record<string, unknown>) => request<T>('PUT', endpoint, body);
 
 export type CardBrand = 'mastercard' | 'visa';
@@ -384,8 +391,8 @@ export const getGiftcardOrderHistory = (params?: { page?: number; limit?: number
 // Payouts API — USD ACH vers banques US uniquement pour le moment
 // ---------------------------------------------------------------------------
 
-export const getPayoutQuote = (d: { to_currency: string; country: string; amount: string }) =>
-  post<PagoPayoutQuote>('/api/payouts/getpayoutquote', d);
+export const getPayoutQuote = (d: { to_currency: string; country: string; amount: string }, idempotencyKey?: string) =>
+  post<PagoPayoutQuote>('/api/payouts/getpayoutquote', d, idempotencyKey);
 
 export const initializePayout = (
   quoteId: string,
@@ -408,7 +415,8 @@ export const initializePayout = (
       post_code: string;
     };
   },
-) => post<{ status: string; [key: string]: unknown }>(`/api/payouts/${encodeURIComponent(quoteId)}/initialize`, d);
+  idempotencyKey?: string,
+) => post<{ status: string; [key: string]: unknown }>(`/api/payouts/${encodeURIComponent(quoteId)}/initialize`, d, idempotencyKey);
 
 // ---------------------------------------------------------------------------
 // Admin API

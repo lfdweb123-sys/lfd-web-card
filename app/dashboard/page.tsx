@@ -402,6 +402,127 @@ function CardMini({ card, active, onClick }: { card: VirtualCard; active: boolea
   );
 }
 
+// ── Transactions de la carte (historique réel chez les marchands) ──
+interface CardTx { id: string; type: string; status: string; amountUSD: number; currency: string; merchant: string | null; date: string; }
+function CardTransactionsSection({ cardId, getToken }: { cardId: string; getToken: () => Promise<string> }) {
+  const [items, setItems] = useState<CardTx[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchPage = useCallback(async (p: number) => {
+    setLoading(true); setError('');
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/cards/${cardId}/transactions?page=${p}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!data.success) { setError(data.error || 'Erreur de chargement.'); return; }
+      setItems(data.data.items);
+      setHasMore(data.data.hasMore);
+      setSupported(data.data.supported);
+      setPage(p);
+    } catch { setError('Erreur réseau.'); }
+    finally { setLoading(false); }
+  }, [cardId, getToken]);
+
+  useEffect(() => { fetchPage(1); }, [fetchPage]);
+
+  if (loading) return <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-brand-orange" /></div>;
+  if (error) return <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm">{error}</div>;
+  if (!supported) return <p className="text-ink-muted text-sm">L'historique des transactions marchands n'est pas disponible pour cette carte.</p>;
+  if (items.length === 0) return <p className="text-ink-muted text-sm">Aucune transaction pour le moment.</p>;
+
+  return (
+    <div>
+      <div className="divide-y divide-surface-border">
+        {items.map(t => (
+          <div key={t.id} className="flex items-center justify-between py-3 text-sm">
+            <div>
+              <div className="font-medium">{t.merchant || 'Marchand inconnu'}</div>
+              <div className="text-ink-muted text-xs">{formatDate(t.date)} · {t.status}</div>
+            </div>
+            <div className="font-semibold">${t.amountUSD.toFixed(2)}</div>
+          </div>
+        ))}
+      </div>
+      <Pagination page={page} hasMore={hasMore} onChange={fetchPage} loading={loading} />
+    </div>
+  );
+}
+
+// ── Limites de dépense (Visa classique uniquement) ─────────────────
+function SpendControlsSection({ card, getToken, onToast }: {
+  card: VirtualCard; getToken: () => Promise<string>; onToast: (t: { message: string; type: 'success' | 'error' }) => void;
+}) {
+  const existing = card.spendControls;
+  const [singleTransaction, setSingleTransaction] = useState(existing?.singleTransaction ?? 0);
+  const [daily, setDaily] = useState(existing?.daily ?? 0);
+  const [weekly, setWeekly] = useState(existing?.weekly ?? 0);
+  const [monthly, setMonthly] = useState(existing?.monthly ?? 0);
+  const [blockGambling, setBlockGambling] = useState(existing?.blockedCategories?.includes('gambling') ?? false);
+  const [blockAdultContent, setBlockAdultContent] = useState(existing?.blockedCategories?.includes('adult_content') ?? false);
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/cards/spend-controls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          cardId: card.id,
+          ...(singleTransaction > 0 ? { singleTransaction } : {}),
+          ...(daily > 0 ? { daily } : {}),
+          ...(weekly > 0 ? { weekly } : {}),
+          ...(monthly > 0 ? { monthly } : {}),
+          blockGambling, blockAdultContent,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) { onToast({ message: data.error || 'Erreur.', type: 'error' }); return; }
+      onToast({ message: 'Limites de dépense mises à jour ✅', type: 'success' });
+    } catch { onToast({ message: 'Erreur réseau.', type: 'error' }); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          ['Par transaction', singleTransaction, setSingleTransaction],
+          ['Par jour', daily, setDaily],
+          ['Par semaine', weekly, setWeekly],
+          ['Par mois', monthly, setMonthly],
+        ].map(([label, value, setter]) => (
+          <div key={label as string}>
+            <label className="block text-xs font-medium text-ink-secondary mb-1">{label as string} (USD)</label>
+            <input type="number" min={0} value={value as number}
+              onChange={(e) => (setter as (n: number) => void)(Math.max(0, Number(e.target.value)))}
+              className="input-field w-full text-sm" placeholder="Illimité" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={blockGambling} onChange={(e) => setBlockGambling(e.target.checked)} className="w-4 h-4 accent-brand-orange" />
+          Bloquer les jeux d'argent et paris en ligne
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={blockAdultContent} onChange={(e) => setBlockAdultContent(e.target.checked)} className="w-4 h-4 accent-brand-orange" />
+          Bloquer le contenu pour adultes
+        </label>
+      </div>
+      <button onClick={handle} disabled={loading} className="btn-primary w-full py-2.5 text-sm">
+        {loading ? 'Enregistrement...' : 'Enregistrer les limites'}
+      </button>
+      <p className="text-ink-muted text-xs">Laissez un champ à 0 pour ne pas fixer de limite sur ce plafond.</p>
+    </div>
+  );
+}
+
 // ── Buy Modal ─────────────────────────────────────────────────────
 function BuyModal({ onClose, country, getToken, hasCards }: {
   onClose: () => void; country: string; getToken: () => Promise<string>; hasCards: boolean;
@@ -533,7 +654,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
           {withLoad && (
             <div className="flex justify-between mb-2"><span className="text-ink-secondary">Rechargement</span><span className="font-medium">{loadAmount.toLocaleString()} FCFA</span></div>
           )}
-          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais Mobile Money (5%)</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
+          <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
           <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{total.toLocaleString()} FCFA</span></div>
         </div>
 
@@ -1207,6 +1328,14 @@ function DashboardContent() {
                       })}
                     </div>
                   </Accordion>
+                  <Accordion title="Transactions de la carte" subtitle="Historique réel des paiements effectués chez les marchands.">
+                    <CardTransactionsSection cardId={selectedCard.id} getToken={getToken} />
+                  </Accordion>
+                  {selectedCard.brand === 'visa' && selectedCard.apiFamily !== '4xxbins' && (
+                    <Accordion title="Limites de dépense" subtitle="Plafonnez vos dépenses et bloquez certaines catégories de marchands.">
+                      <SpendControlsSection card={selectedCard} getToken={getToken} onToast={setToast} />
+                    </Accordion>
+                  )}
                 </>
               )}
 

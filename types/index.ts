@@ -35,6 +35,14 @@ export interface VirtualCard {
   theme?: string;
   apiFamily?: CardApiFamily; // 'classic' = EURO-MASTER/Visacard historique, '4xxbins' = nouvelle gamme (493BIN/536BIN)
   productCode?: string; // ex. 'us_493_visa_bin' | '536_master', uniquement si apiFamily === '4xxbins'
+  spendControls?: { // Visacard classique uniquement
+    singleTransaction?: number | null;
+    daily?: number | null;
+    weekly?: number | null;
+    monthly?: number | null;
+    blockedCategories?: string[];
+    updatedAt?: string;
+  };
 }
 
 export interface Transaction {
