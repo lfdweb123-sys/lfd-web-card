@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
   { id: 'pagocards', label: 'Soldes émetteur', icon: <CreditCard size={18} /> },
   { id: 'payouts', label: 'Payouts', icon: <Send size={18} /> },
+  { id: 'giftcard-orders', label: 'Cartes cadeaux', icon: <Gift size={18} /> },
 ];
 
 // ── Sidebar desktop ───────────────────────────────────────────────
@@ -467,6 +468,74 @@ function PayoutsTab({ getToken }: { getToken: () => Promise<string> }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Onglet Cartes cadeaux (vue admin sur toutes les commandes) ────────
+interface AdminGiftcardOrder {
+  id: string; userId: string; title: string; quantity: number;
+  amountXOF: number; status: string; referenceCode?: string; createdAt: string;
+}
+
+function GiftcardOrdersTab({ getToken }: { getToken: () => Promise<string> }) {
+  const [items, setItems] = useState<AdminGiftcardOrder[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [status, setStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  const fetchOrders = useCallback(async (p: number, s: string) => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/admin/giftcard-orders?page=${p}&status=${s}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) { setItems(data.data.items); setHasMore(data.data.hasMore); setPage(p); }
+    } finally { setLoading(false); }
+  }, [getToken]);
+
+  useEffect(() => { fetchOrders(1, status); }, [status, fetchOrders]);
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <h1 className="text-2xl font-bold">Cartes cadeaux</h1>
+      <p className="text-ink-secondary text-sm -mt-3">Toutes les commandes de cartes cadeaux passées sur la plateforme.</p>
+      <select value={status} onChange={e => setStatus(e.target.value)} className="input-field w-auto text-sm">
+        <option value="all">Tous les statuts</option>
+        <option value="success">Réussies</option>
+        <option value="pending">En attente</option>
+        <option value="failed">Échouées</option>
+      </select>
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-muted">
+              <tr className="text-ink-secondary text-left">
+                {['Utilisateur', 'Carte', 'Montant', 'Statut', 'Référence', 'Date'].map(h =>
+                  <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted">Aucune commande.</td></tr>
+              ) : items.map(o => (
+                <tr key={o.id} className="border-t border-surface-border hover:bg-surface-muted/50">
+                  <td className="px-4 py-3 font-mono text-xs text-ink-muted">{o.userId.slice(0, 12)}…</td>
+                  <td className="px-4 py-3 font-medium">{o.title} x{o.quantity}</td>
+                  <td className="px-4 py-3">{o.amountXOF?.toLocaleString()} FCFA</td>
+                  <td className="px-4 py-3"><TxBadge s={o.status} /></td>
+                  <td className="px-4 py-3 font-mono text-xs">{o.referenceCode || '—'}</td>
+                  <td className="px-4 py-3 text-ink-muted">{formatDateTime(o.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-4"><Pagination page={page} hasMore={hasMore} onChange={(p) => fetchOrders(p, status)} loading={loading} /></div>
+      </div>
     </div>
   );
 }
@@ -1318,6 +1387,8 @@ export default function AdminPage() {
       case 'pagocards': return <PagocardsWalletTab getToken={getToken} />;
 
       case 'payouts': return <PayoutsTab getToken={getToken} />;
+
+      case 'giftcard-orders': return <GiftcardOrdersTab getToken={getToken} />;
     }
   };
 

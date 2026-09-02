@@ -88,9 +88,9 @@ const CARDS: PriceCard[] = [
       { label: 'Mastercard — formule Classique', value: '1 $ de frais' },
       { label: 'Visa — formule Nouvelle génération', value: 'Aucun frais' },
       { label: 'Visa — formule Classique', value: 'Non disponible' },
-      { label: 'Traitement', value: 'Manuel, sous 24 à 48h' },
+      { label: 'Traitement', value: 'Souvent instantané, sinon sous 24 à 48h' },
     ],
-    note: 'Le montant est prélevé sur la carte immédiatement ; le virement Mobile Money suit sous 24 à 48h.',
+    note: 'Le montant est prélevé sur la carte immédiatement. Un envoi automatique et instantané vers votre Mobile Money est tenté en premier ; s\'il n\'aboutit pas, le virement est traité manuellement sous 24 à 48h.',
   },
   {
     icon: <Gift size={20} className="text-white" />,
