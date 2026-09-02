@@ -313,7 +313,10 @@ export default function GiftcardsPage() {
       if (!data.success) { setCatalogError(data.error || 'Impossible de charger le catalogue.'); return; }
       const list: Giftcard[] = data.data?.data || [];
       setCatalog(list);
-      setCatalogHasMore(list.length >= 24);
+      // Le catalogue ne montre que les cartes confirmées disponibles chez Pagocards — une page
+      // peut donc contenir moins de 24 cartes tout en ayant une page suivante côté fournisseur ;
+      // on se fie au drapeau calculé côté serveur plutôt qu'à la taille de la liste filtrée.
+      setCatalogHasMore(Boolean(data.data?.hasMore));
     } catch { setCatalogError('Erreur réseau.'); }
     finally { setCatalogLoading(false); }
   }, [getToken]);
