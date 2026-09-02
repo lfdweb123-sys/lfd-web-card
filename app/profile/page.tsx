@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatDateTime } from '@/lib/date';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
 import type { AppUser } from '@/types';
 import { Logo as LogoComponent } from '@/components/Logo';
 import { SidebarLogo } from '@/components/SidebarLogo';
@@ -309,12 +307,16 @@ export default function ProfilePage() {
       // Update Firebase Auth displayName
       await updateProfile(firebaseUser, { displayName: displayName.trim() });
 
-      // Update Firestore user doc
-      await updateDoc(doc(db, 'users', firebaseUser.uid), {
-        displayName: displayName.trim(),
-        phone: phone.trim(),
-        country,
+      // Les règles Firestore interdisent l'écriture directe depuis le client sur /users
+      // (Admin SDK uniquement) — on passe donc par l'API plutôt qu'un updateDoc() client.
+      const token = await getToken();
+      const res = await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ displayName: displayName.trim(), phone: phone.trim(), country }),
       });
+      const data = await res.json();
+      if (!data.success) { showToast(data.error || 'Erreur lors de la mise à jour.', 'error'); return; }
 
       setProfileSuccess(true);
       showToast('Profil mis à jour avec succès.', 'success');

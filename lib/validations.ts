@@ -26,6 +26,12 @@ export const FreezeCardSchema = z.object({
   action: z.enum(['freeze', 'unfreeze']),
 });
 
+export const UpdateProfileSchema = z.object({
+  displayName: z.string().trim().min(1, 'Le nom est requis.').max(80),
+  phone: z.string().trim().max(20).optional().default(''),
+  country: z.string().min(2).max(3),
+});
+
 export const BuyGiftcardSchema = z.object({
   // Le catalogue Pagocards renvoie parfois le sku comme un nombre JSON (ex. 4402)
   // et non une chaîne comme le documente son propre schéma — on l'accepte dans
