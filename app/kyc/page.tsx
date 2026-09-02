@@ -10,7 +10,7 @@ import {
   Shield, CheckCircle, Clock, XCircle, ArrowRight,
   Upload, Camera, CreditCard, Zap, AlertCircle,
   RefreshCw, ChevronRight, X, Eye,
-  Home, TrendingUp, Bell, Menu, User, LogOut,
+  Home, TrendingUp, Bell, Menu, User, LogOut, Gift,
 } from 'lucide-react';
 
 type KycStatus = 'approved' | 'rejected' | 'pending' | 'in_review' | null;
@@ -185,6 +185,7 @@ function Sidebar({ onLogout, userName }: { onLogout: () => void; userName: strin
   const items = [
     { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
     { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { id: 'giftcards', label: 'Cartes cadeaux', icon: <Gift size={18} />, href: '/giftcards' },
     { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
   ];
@@ -248,6 +249,7 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
   const items = [
     { label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
     { label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { label: 'Cartes cadeaux', icon: <Gift size={18} />, href: '/giftcards' },
     { label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
     { label: 'Notifications', icon: <Bell size={18} />, href: '/dashboard?tab=notifications' },
   ];

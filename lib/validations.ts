@@ -25,3 +25,11 @@ export const FreezeCardSchema = z.object({
   cardId: z.string().min(1),
   action: z.enum(['freeze', 'unfreeze']),
 });
+
+export const BuyGiftcardSchema = z.object({
+  sku: z.string().min(1),
+  title: z.string().min(1).max(120),
+  quantity: z.number().int().min(1).max(10),
+  amountUSD: z.number().min(1).max(500), // prix unitaire en USD
+  country: z.string().min(2).max(3),
+});

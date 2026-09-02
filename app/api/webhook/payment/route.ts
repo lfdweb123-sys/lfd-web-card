@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
-import { createCard, fundCard, getCard, getMastercardSensitive, type CardBrand } from '@/lib/pagocards';
+import { createCard, fundCard, getCard, getMastercardSensitive, purchaseGiftcard, type CardBrand } from '@/lib/pagocards';
 import { createCard4xx, fundCard4xx, type Product4xx } from '@/lib/pagocards-4xxbins';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 import { sendPushToUser } from '@/lib/push';
@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
   try {
     if (tx.type === 'card_purchase') await handlePurchase(txDoc, tx, meta);
     else if (tx.type === 'card_reload') await handleReload(txDoc, tx);
+    else if (tx.type === 'giftcard_purchase') await handleGiftcardPurchase(txDoc, tx);
   } catch (err) {
     await txDoc.ref.update({
       status: 'error',
@@ -346,6 +347,69 @@ async function handleReload(
     feeXOF,
     feeUSD,
     totalXOF: tx.total,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+async function handleGiftcardPurchase(
+  txDoc: FirebaseFirestore.DocumentSnapshot,
+  tx: FirebaseFirestore.DocumentData,
+) {
+  const sku = tx.sku as string;
+  const quantity = tx.quantity as number;
+  const amountUSD = tx.amountUSD as number;
+  const totalUSD = tx.totalUSD as number;
+  const title = tx.title as string;
+
+  const order = await purchaseGiftcard({ sku, quantity, amount: amountUSD });
+
+  const orderRef = await adminDb.collection('giftcard_orders').add({
+    userId: tx.userId,
+    transactionId: txDoc.id,
+    sku,
+    title,
+    quantity,
+    amountUSD,
+    totalUSD,
+    amountXOF: tx.amount,
+    status: 'success',
+    referenceCode: order.referencecode,
+    shareLink: order.shareLink || null,
+    createdAt: new Date().toISOString(),
+  });
+
+  await txDoc.ref.update({
+    status: 'success',
+    giftcardOrderId: orderRef.id,
+    completedAt: new Date().toISOString(),
+  });
+
+  // Frais mobile money de 5% → revenu plateforme
+  if (tx.fee) {
+    await adminDb.collection('platform_revenue').add({
+      type: 'giftcard_fee',
+      userId: tx.userId,
+      giftcardOrderId: orderRef.id,
+      amountXOF: tx.amount,
+      totalXOF: tx.total,
+      feeXOF: tx.fee,
+      rate: 0.05,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const title2 = 'Carte cadeau prête ! 🎁';
+  const message = order.shareLink
+    ? `Votre carte cadeau ${title} x${quantity} est prête. Consultez "Mes cartes cadeaux" pour récupérer le code.`
+    : `Votre carte cadeau ${title} x${quantity} a été commandée avec succès.`;
+  await adminDb.collection('notifications').add({
+    userId: tx.userId, type: 'giftcard_ready',
+    title: title2, message, read: false, createdAt: new Date().toISOString(),
+  });
+  await sendPushToUser(tx.userId, { title: title2, body: message, data: { url: '/giftcards' } });
+
+  await adminDb.collection('logs').add({
+    type: 'giftcard_purchased', userId: tx.userId, giftcardOrderId: orderRef.id, sku, quantity,
     createdAt: new Date().toISOString(),
   });
 }

@@ -19,7 +19,7 @@ import {
   Clock, CheckCircle, XCircle, Copy, Check,
   TrendingUp, Bell, Home, X, ChevronRight, AlertCircle, Menu,
   Shield, ArrowRight, Loader2, Camera, Zap, Layers,
-  UserCircle
+  UserCircle, Gift
 } from 'lucide-react';
 
 const METHOD_LABELS: Record<string, string> = {
@@ -184,6 +184,7 @@ function navItems(unread: number) {
   return [
     { id: 'home', label: 'Accueil', icon: <Home size={18} />, href: '/dashboard?tab=home' },
     { id: 'card', label: 'Mes cartes', icon: <CreditCard size={18} />, href: '/dashboard?tab=card' },
+    { id: 'giftcards', label: 'Cartes cadeaux', icon: <Gift size={18} />, href: '/giftcards' },
     { id: 'history', label: 'Historique', icon: <TrendingUp size={18} />, href: '/dashboard?tab=history' },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unread, href: '/dashboard?tab=notifications' },
   ];

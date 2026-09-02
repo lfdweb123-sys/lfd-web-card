@@ -1,6 +1,6 @@
 export type UserRole = 'user' | 'admin' | 'referrer';
 export type CardStatus = 'pending' | 'active' | 'frozen' | 'terminated';
-export type TransactionType = 'card_purchase' | 'card_reload' | 'card_withdrawal' | 'refund';
+export type TransactionType = 'card_purchase' | 'card_reload' | 'card_withdrawal' | 'giftcard_purchase' | 'refund';
 export type TransactionStatus = 'pending' | 'success' | 'failed' | 'error' | 'pending_payout' | 'completed';
 export type CardBrand = 'mastercard' | 'visa';
 export type CardApiFamily = 'classic' | '4xxbins';
@@ -55,7 +55,7 @@ export interface Notification {
   userId: string;
   type: 'wallet_activation' | '3ds_required' | 'card_created' | 'card_reloaded'
     | 'payment_failed' | 'kyc_approved' | 'kyc_rejected'
-    | 'withdrawal_initiated' | 'withdrawal_completed' | string;
+    | 'withdrawal_initiated' | 'withdrawal_completed' | 'giftcard_ready' | string;
   title: string;
   message: string;
   read: boolean;
@@ -88,5 +88,21 @@ export interface ReferralEarning {
   amountXOF: number;
   paid: boolean;
   paidAt: string | null;
+  createdAt: string;
+}
+
+export interface GiftcardOrder {
+  id: string;
+  userId: string;
+  transactionId: string;
+  sku: string;
+  title: string;
+  quantity: number;
+  amountUSD: number; // prix unitaire
+  totalUSD: number;
+  amountXOF: number;
+  status: 'pending' | 'success' | 'failed';
+  referenceCode?: string;
+  shareLink?: string; // lien de révélation du code cadeau, fourni par Pagocards
   createdAt: string;
 }
