@@ -363,8 +363,16 @@ export const getGiftcardBySku = (sku: string) => get<PagoGiftcard>(`/api/getgift
 
 export const getGiftcardExchangeRates = () => get<Record<string, unknown>>('/api/getexchangerates');
 
+// Réponse réelle observée en prod : { success, availability: { availability, detail, delivery_type, ... } }
+// — imbriquée sous "availability", pas un booléen "available" à plat comme on l'avait supposé.
+export interface PagoSkuAvailability {
+  success?: boolean;
+  availability?: { availability: boolean; detail?: string; delivery_type?: number; delivery_type_text?: string };
+  [key: string]: unknown;
+}
+
 export const checkGiftcardSkuAvailability = (sku: string, itemCount: number, price: number) =>
-  get<{ available: boolean; [key: string]: unknown }>(
+  get<PagoSkuAvailability>(
     `/api/checkskuavailability/${encodeURIComponent(sku)}?item_count=${itemCount}&price=${price}`,
   );
 

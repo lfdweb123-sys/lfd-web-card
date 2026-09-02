@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // Vérifie en direct auprès de Pagocards que cette combinaison sku/quantité/prix est disponible
     // avant d'encaisser le client (catalogue et prix peuvent changer côté fournisseur).
     const availability = await checkGiftcardSkuAvailability(sku, quantity, amountUSD);
-    if (!availability.available) {
+    if (!availability.availability?.availability) {
       console.warn('giftcards/buy refusé (indisponible chez Pagocards) :', { sku, quantity, amountUSD, availability });
       return NextResponse.json({ success: false, error: 'Cette carte cadeau n\'est plus disponible à ce prix. Actualisez le catalogue.' }, { status: 400 });
     }
