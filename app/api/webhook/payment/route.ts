@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, FieldValue } from '@/lib/firebase-admin';
 import { createCard, fundCard, getCard, getMastercardSensitive, type CardBrand } from '@/lib/pagocards';
+import { createCard4xx, fundCard4xx, type Product4xx } from '@/lib/pagocards-4xxbins';
 import { sendReloadSuccessEmail, sendReloadFailedEmail } from '@/lib/brevo';
 import { sendPushToUser } from '@/lib/push';
 import { creditReferralCommission } from '@/lib/referral';
@@ -109,38 +110,58 @@ async function handlePurchase(
   const lastname = parts.slice(1).join(' ') || 'Account';
 
   const brand: CardBrand = (tx.brand as CardBrand) || (meta?.brand as CardBrand) || 'visa';
+  const apiFamily: 'classic' | '4xxbins' = tx.apiFamily === '4xxbins' ? '4xxbins' : 'classic';
 
-  const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string });
-  if (!pagoRes.success) throw new Error(pagoRes.message || 'Card creation failed');
-
-  // La réponse de création (doc Pagocards) ne renvoie que cardid/useremail/nameoncard.
-  // On complète avec getcard (solde/devise/statut) et, pour l'EURO-MASTER, getcardsensitive
-  // (numéro/CVC/mois d'expiration via une URL d'embed signée).
+  let pagocardsCardId: string;
   let last4 = '****';
   let expiryMonth = '12';
   let expiryYear = String(new Date().getFullYear() + 3).slice(-2);
   let balance = 0;
   let currency = brand === 'visa' ? 'USD' : 'EUR';
 
-  try {
-    const details = await getCard({ brand, cardid: pagoRes.cardid, email: user.email as string });
-    balance = details.balance ?? 0;
-    currency = details.currency || currency;
-  } catch { /* détails non bloquants pour la création */ }
+  if (apiFamily === '4xxbins') {
+    // Nouvelle gamme 4XXBINs (493BIN/536BIN) : une seule requête renvoie déjà tous les
+    // détails de la carte (numéro, solde, devise) — pas besoin d'un second appel getcard.
+    const productCode = ((tx.productCode as Product4xx) || (brand === 'mastercard' ? '536_master' : 'us_493_visa_bin'));
+    const initialLoadUSD = tx.initialLoad ? parseFloat(((tx.initialLoad as number) / 600).toFixed(2)) : undefined;
+    const res = await createCard4xx({ product_code: productCode, first_name: firstname, last_name: lastname, email: user.email as string, initial_load: initialLoadUSD });
+    const d = res.data;
+    pagocardsCardId = d.card_id;
+    last4 = d.last_four || last4;
+    expiryMonth = d.expiry_month ? d.expiry_month.padStart(2, '0') : expiryMonth;
+    expiryYear = (d.expiry_year || expiryYear).slice(-2);
+    currency = d.currency || currency;
+    balance = d.balance?.display_amount ?? 0;
+  } else {
+    const pagoRes = await createCard({ brand, firstname, lastname, email: user.email as string });
+    if (!pagoRes.success) throw new Error(pagoRes.message || 'Card creation failed');
+    pagocardsCardId = pagoRes.cardid;
 
-  if (brand === 'mastercard') {
+    // La réponse de création (doc Pagocards) ne renvoie que cardid/useremail/nameoncard.
+    // On complète avec getcard (solde/devise/statut) et, pour l'EURO-MASTER, getcardsensitive
+    // (numéro/CVC/mois d'expiration via une URL d'embed signée).
     try {
-      const sensitive = await getMastercardSensitive({ cardid: pagoRes.cardid, email: user.email as string });
-      if (sensitive.cardnumber) last4 = sensitive.cardnumber.slice(-4);
-      if (sensitive.month) expiryMonth = sensitive.month.padStart(2, '0');
-    } catch { /* non bloquant, dispo plus tard via /api/getcardsensitive */ }
+      const details = await getCard({ brand, cardid: pagoRes.cardid, email: user.email as string });
+      balance = details.balance ?? 0;
+      currency = details.currency || currency;
+    } catch { /* détails non bloquants pour la création */ }
+
+    if (brand === 'mastercard') {
+      try {
+        const sensitive = await getMastercardSensitive({ cardid: pagoRes.cardid, email: user.email as string });
+        if (sensitive.cardnumber) last4 = sensitive.cardnumber.slice(-4);
+        if (sensitive.month) expiryMonth = sensitive.month.padStart(2, '0');
+      } catch { /* non bloquant, dispo plus tard via /api/getcardsensitive */ }
+    }
   }
 
   const cardRef = await adminDb.collection('cards').add({
     userId: tx.userId,
-    pagocardsCardId: pagoRes.cardid,
+    pagocardsCardId,
     last4,
     brand,
+    apiFamily,
+    ...(apiFamily === '4xxbins' ? { productCode: tx.productCode } : {}),
     expiryMonth,
     expiryYear,
     cardholderName: `${firstname} ${lastname}`.toUpperCase(),
@@ -154,7 +175,7 @@ async function handlePurchase(
   await txDoc.ref.update({
     status: 'success',
     cardId: cardRef.id,
-    pagocardsCardId: pagoRes.cardid,
+    pagocardsCardId,
     completedAt: new Date().toISOString(),
   });
 
@@ -170,31 +191,44 @@ async function handlePurchase(
       feeXOF: cardFee,
       rate: 0.05,
       brand,
+      apiFamily,
       createdAt: new Date().toISOString(),
     });
   }
 
-  // Rechargement optionnel demandé au moment de l'achat — on envoie UNIQUEMENT le
-  // montant carte à Pagocards, jamais les frais (même logique que /api/cards/reload).
+  // Rechargement optionnel demandé au moment de l'achat.
+  // 4xxbins : déjà inclus dans l'appel de création ci-dessus (initial_load) — on ne fait
+  // que loguer le revenu. classic : nécessite un second appel fundCard séparé.
   if (tx.initialLoad) {
-    try {
-      const loadAmountUSD = parseFloat(((tx.initialLoad as number) / 600).toFixed(2));
-      const fundRes = await fundCard({ brand, cardid: pagoRes.cardid, email: user.email as string, amount: loadAmountUSD });
-      if (fundRes.success) {
-        await cardRef.update({ balance: fundRes.balance ?? loadAmountUSD });
-
-        const loadFeeXOF = (tx.loadFee as number | undefined) ?? 0;
-        await adminDb.collection('platform_revenue').add({
-          type: 'reload_fee',
-          userId: tx.userId,
-          cardId: cardRef.id,
-          amountXOF: tx.initialLoad,
-          feeXOF: loadFeeXOF,
-          rate: 0.05,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    } catch { /* la carte reste créée même si le rechargement initial échoue — rechargeable ensuite depuis le dashboard */ }
+    const loadFeeXOF = (tx.loadFee as number | undefined) ?? 0;
+    if (apiFamily === '4xxbins') {
+      await adminDb.collection('platform_revenue').add({
+        type: 'reload_fee',
+        userId: tx.userId,
+        cardId: cardRef.id,
+        amountXOF: tx.initialLoad,
+        feeXOF: loadFeeXOF,
+        rate: 0.05,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      try {
+        const loadAmountUSD = parseFloat(((tx.initialLoad as number) / 600).toFixed(2));
+        const fundRes = await fundCard({ brand, cardid: pagocardsCardId, email: user.email as string, amount: loadAmountUSD });
+        if (fundRes.success) {
+          await cardRef.update({ balance: fundRes.balance ?? loadAmountUSD });
+          await adminDb.collection('platform_revenue').add({
+            type: 'reload_fee',
+            userId: tx.userId,
+            cardId: cardRef.id,
+            amountXOF: tx.initialLoad,
+            feeXOF: loadFeeXOF,
+            rate: 0.05,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } catch { /* la carte reste créée même si le rechargement initial échoue — rechargeable ensuite depuis le dashboard */ }
+    }
   }
 
   await adminDb.collection('notifications').add({
@@ -232,19 +266,23 @@ async function handleReload(
   const brand: CardBrand = (card.brand as CardBrand) || 'visa';
 
   // On envoie UNIQUEMENT tx.amount à Pagocards, jamais tx.fee ni tx.total
-  const pagoRes = await fundCard({
-    brand,
-    cardid: card.pagocardsCardId as string,
-    email: card.email as string,
-    amount: amountUSD,
-  });
-  if (!pagoRes.success) throw new Error(pagoRes.message || 'Fund failed');
-
-  // Mise à jour solde carte
-  if (pagoRes.balance !== undefined) {
-    await cardDoc.ref.update({ balance: pagoRes.balance });
+  if (card.apiFamily === '4xxbins') {
+    const res = await fundCard4xx(card.pagocardsCardId as string, amountUSD);
+    await cardDoc.ref.update({ balance: res.data.display_amount ?? FieldValue.increment(amountUSD) });
   } else {
-    await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
+    const pagoRes = await fundCard({
+      brand,
+      cardid: card.pagocardsCardId as string,
+      email: card.email as string,
+      amount: amountUSD,
+    });
+    if (!pagoRes.success) throw new Error(pagoRes.message || 'Fund failed');
+
+    if (pagoRes.balance !== undefined) {
+      await cardDoc.ref.update({ balance: pagoRes.balance });
+    } else {
+      await cardDoc.ref.update({ balance: FieldValue.increment(amountUSD) });
+    }
   }
 
   const feeXOF = (tx.fee as number) ?? 0;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { blockCard, unblockCard, type CardBrand } from '@/lib/pagocards';
+import { blockCard4xx, unblockCard4xx } from '@/lib/pagocards-4xxbins';
 import { FreezeCardSchema } from '@/lib/validations';
 
 export async function POST(req: NextRequest) {
@@ -19,8 +20,13 @@ export async function POST(req: NextRequest) {
     const card = cardDoc.data()!;
     const brand = (card.brand as CardBrand) || 'mastercard';
 
-    if (action === 'freeze') await blockCard({ brand, cardid: card.pagocardsCardId, email: card.email });
-    else await unblockCard({ brand, cardid: card.pagocardsCardId, email: card.email });
+    if (card.apiFamily === '4xxbins') {
+      if (action === 'freeze') await blockCard4xx(card.pagocardsCardId);
+      else await unblockCard4xx(card.pagocardsCardId);
+    } else {
+      if (action === 'freeze') await blockCard({ brand, cardid: card.pagocardsCardId, email: card.email });
+      else await unblockCard({ brand, cardid: card.pagocardsCardId, email: card.email });
+    }
 
     const newStatus = action === 'freeze' ? 'frozen' : 'active';
     await adminDb.collection('cards').doc(cardId).update({ status: newStatus });

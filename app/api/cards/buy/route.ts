@@ -3,9 +3,16 @@ import { requireAuth, rateLimit } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { generatePaymentLink } from '@/lib/payment-gateway';
 import { toSafeDate } from '@/lib/date';
+import type { Product4xx } from '@/lib/pagocards-4xxbins';
 
 const CARD_PRICE = Number(process.env.CARD_CREATION_PRICE) || 5000;
 const PURCHASE_FEE_RATE = 0.05; // frais mobile money 5% sur chaque achat de carte
+
+// Nouvelle gamme 4XXBINs : moins chère côté émetteur, et sans frais de retrait pour le client.
+const PRODUCT_4XX: Record<'visa' | 'mastercard', Product4xx> = {
+  visa: 'us_493_visa_bin',
+  mastercard: '536_master',
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +25,8 @@ export async function POST(req: NextRequest) {
     // Validation manuelle — plus besoin de BuyCardSchema qui exigeait "method"
     const country = (body.country as string)?.toUpperCase() || 'BJ';
     const brand: 'visa' | 'mastercard' = body.brand === 'mastercard' ? 'mastercard' : 'visa';
+    const apiFamily: 'classic' | '4xxbins' = body.formula === 'new' ? '4xxbins' : 'classic';
+    const productCode = apiFamily === '4xxbins' ? PRODUCT_4XX[brand] : undefined;
 
     if (!country) {
       return NextResponse.json({ success: false, error: 'Pays requis.' }, { status: 400 });
@@ -63,6 +72,8 @@ export async function POST(req: NextRequest) {
       userId: user.uid, type: 'card_purchase', amount: CARD_PRICE,
       fee, total,
       ...(initialLoad ? { initialLoad, cardFee, loadFee } : {}),
+      apiFamily,
+      ...(productCode ? { productCode } : {}),
       currency: 'XOF', status: 'pending', brand,
       createdAt: new Date().toISOString(),
     });

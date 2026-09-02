@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, rateLimit } from '@/lib/auth-middleware';
 import { adminDb } from '@/lib/firebase-admin';
 import { getMastercard, withdrawMastercard } from '@/lib/pagocards';
+import { getCard4xx, withdrawCard4xx } from '@/lib/pagocards-4xxbins';
 import { sendPushToUser } from '@/lib/push';
 import { z } from 'zod';
 
@@ -29,18 +30,31 @@ export async function POST(req: NextRequest) {
     const card = cardDoc.data()!;
     if (card.userId !== user.uid) return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 });
 
-    // Le retrait n'est documenté par Pagocards que pour les cartes EURO-MASTER (Mastercard).
-    if (card.brand !== 'mastercard')
-      return NextResponse.json({ success: false, error: 'Le retrait est disponible uniquement pour les cartes Mastercard.' }, { status: 400 });
+    // Le retrait est disponible pour les cartes EURO-MASTER (Mastercard classique) et pour
+    // toute la nouvelle gamme 4XXBINs (Visa 493BIN et Mastercard 536BIN). Il n'est pas
+    // documenté par Pagocards pour la Visacard classique.
+    const isClassicMastercard = card.apiFamily !== '4xxbins' && card.brand === 'mastercard';
+    const is4xxbins = card.apiFamily === '4xxbins';
+    if (!isClassicMastercard && !is4xxbins)
+      return NextResponse.json({ success: false, error: 'Le retrait est disponible uniquement pour les cartes Mastercard ou la nouvelle gamme de cartes.' }, { status: 400 });
     if (card.status !== 'active')
       return NextResponse.json({ success: false, error: 'Carte non active.' }, { status: 400 });
 
     // Solde vérifié en direct auprès de l'émetteur pour éviter tout écart avec la valeur locale.
-    const liveCard = await getMastercard({ cardid: card.pagocardsCardId, email: card.email });
-    if ((liveCard.balance ?? 0) < amount)
+    let liveBalance: number;
+    if (is4xxbins) {
+      const liveCard = await getCard4xx(card.pagocardsCardId);
+      liveBalance = liveCard.data.balance?.display_amount ?? 0;
+    } else {
+      const liveCard = await getMastercard({ cardid: card.pagocardsCardId, email: card.email });
+      liveBalance = liveCard.balance ?? 0;
+    }
+    if (liveBalance < amount)
       return NextResponse.json({ success: false, error: 'Solde insuffisant sur la carte.' }, { status: 400 });
 
-    const result = await withdrawMastercard({ cardid: card.pagocardsCardId, email: card.email, amount });
+    const pagocardsTransactionId = is4xxbins
+      ? (await withdrawCard4xx(card.pagocardsCardId, amount)).data.transaction_id
+      : (await withdrawMastercard({ cardid: card.pagocardsCardId, email: card.email, amount })).transactionId;
 
     const amountXOF = Math.round(amount * XOF_RATE);
     const txRef = await adminDb.collection('transactions').add({
@@ -51,11 +65,11 @@ export async function POST(req: NextRequest) {
       amount: amountXOF, // équivalent FCFA approximatif, à titre indicatif pour le virement Mobile Money
       currency: 'USD',
       status: 'pending_payout', // en attente de virement Mobile Money manuel côté admin
-      pagocardsTransactionId: result.transactionId,
+      pagocardsTransactionId,
       createdAt: new Date().toISOString(),
     });
 
-    await cardRef.update({ balance: Math.max(0, (liveCard.balance ?? amount) - amount) });
+    await cardRef.update({ balance: Math.max(0, liveBalance - amount) });
 
     const title = 'Retrait initié 💸';
     const message = `Retrait de $${amount} en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`;

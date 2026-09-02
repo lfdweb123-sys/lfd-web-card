@@ -27,6 +27,13 @@ const METHOD_LABELS: Record<string, string> = {
   orange_money: 'Orange Money', wave: 'Wave',
 };
 
+// Le retrait n'est documenté par Pagocards que pour l'EURO-MASTER (Mastercard classique)
+// et pour toute la nouvelle gamme 4XXBINs (Visa 493BIN et Mastercard 536BIN) — jamais pour
+// la Visacard classique.
+function canWithdraw(card: VirtualCard) {
+  return card.apiFamily === '4xxbins' || card.brand === 'mastercard';
+}
+
 // ── KYC ──────────────────────────────────────────────────────────
 type KycStatus = 'approved' | 'rejected' | 'pending' | 'in_review' | null;
 
@@ -398,6 +405,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
   onClose: () => void; country: string; getToken: () => Promise<string>; hasCards: boolean;
 }) {
   const [brand, setBrand] = useState<'visa' | 'mastercard'>('visa');
+  const [formula, setFormula] = useState<'classic' | 'new'>('new');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [withLoad, setWithLoad] = useState(false);
@@ -419,7 +427,7 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
       const res = await fetch('/api/cards/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ country: country.toLowerCase(), brand, ...(withLoad ? { initialLoad: loadAmount } : {}) }),
+        body: JSON.stringify({ country: country.toLowerCase(), brand, formula, ...(withLoad ? { initialLoad: loadAmount } : {}) }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
@@ -461,6 +469,22 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
                 <div className={`w-7 h-7 rounded-full opacity-80 ${brand === 'mastercard' ? 'bg-yellow-400' : 'bg-yellow-300'}`} />
               </div>
               <span className={`text-xs font-medium ${brand === 'mastercard' ? 'text-brand-orange' : 'text-ink-muted'}`}>Mastercard</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-sm font-medium mb-2">Formule</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setFormula('new')}
+              className={`p-3 rounded-2xl border-2 text-left transition-all ${formula === 'new' ? 'border-brand-orange bg-brand-orange-light' : 'border-surface-border bg-surface-muted'}`}>
+              <div className={`text-sm font-semibold ${formula === 'new' ? 'text-brand-orange' : 'text-ink-primary'}`}>Nouvelle génération</div>
+              <div className="text-xs text-ink-muted mt-0.5">Retraits sans frais</div>
+            </button>
+            <button onClick={() => setFormula('classic')}
+              className={`p-3 rounded-2xl border-2 text-left transition-all ${formula === 'classic' ? 'border-brand-orange bg-brand-orange-light' : 'border-surface-border bg-surface-muted'}`}>
+              <div className={`text-sm font-semibold ${formula === 'classic' ? 'text-brand-orange' : 'text-ink-primary'}`}>Classique</div>
+              <div className="text-xs text-ink-muted mt-0.5">Formule historique</div>
             </button>
           </div>
         </div>
@@ -1115,11 +1139,11 @@ function DashboardContent() {
                     onFreeze={() => handleFreeze(selectedCard)}
                     loading={freezeLoading}
                   />
-                  <div className={`grid gap-3 ${selectedCard.brand === 'mastercard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className={`grid gap-3 ${canWithdraw(selectedCard) ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <button onClick={() => setShowReload(true)} className="btn-primary py-3.5">
                       <TrendingUp size={16} /> Recharger
                     </button>
-                    {selectedCard.brand === 'mastercard' && (
+                    {canWithdraw(selectedCard) && (
                       <button onClick={() => setShowWithdraw(true)} className="btn-secondary py-3.5">
                         <ArrowDownLeft size={16} /> Retirer
                       </button>

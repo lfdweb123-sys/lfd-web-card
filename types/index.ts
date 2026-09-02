@@ -3,6 +3,7 @@ export type CardStatus = 'pending' | 'active' | 'frozen' | 'terminated';
 export type TransactionType = 'card_purchase' | 'card_reload' | 'card_withdrawal' | 'refund';
 export type TransactionStatus = 'pending' | 'success' | 'failed' | 'error' | 'pending_payout' | 'completed';
 export type CardBrand = 'mastercard' | 'visa';
+export type CardApiFamily = 'classic' | '4xxbins';
 
 export interface AppUser {
   uid: string;
@@ -32,6 +33,8 @@ export interface VirtualCard {
   status: CardStatus;
   createdAt: string;
   theme?: string;
+  apiFamily?: CardApiFamily; // 'classic' = EURO-MASTER/Visacard historique, '4xxbins' = nouvelle gamme (493BIN/536BIN)
+  productCode?: string; // ex. 'us_493_visa_bin' | '536_master', uniquement si apiFamily === '4xxbins'
 }
 
 export interface Transaction {
