@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/date';
 import { Logo as LogoComponent } from '@/components/Logo';
 import { SidebarLogo } from '@/components/SidebarLogo';
 import {
-  Shield, CheckCircle, Clock, XCircle, ArrowRight,
+  Shield, CheckCircle, Clock, XCircle, ArrowRight, ArrowLeft,
   Upload, Camera, CreditCard, Zap, AlertCircle,
   RefreshCw, ChevronRight, X, Eye,
   Home, TrendingUp, Bell, Menu, User, LogOut, Gift,
@@ -172,6 +172,35 @@ function StatusBanner({ kyc }: { kyc: KycData }) {
   }
 
   return null;
+}
+
+// ── Stepper ──────────────────────────────────────────────────────
+function KycStepper({ step }: { step: 1 | 2 | 3 }) {
+  const steps = [
+    { n: 1, label: 'Méthode' },
+    { n: 2, label: 'Documents' },
+    { n: 3, label: 'Résultat' },
+  ];
+  return (
+    <div className="flex items-center mb-7">
+      {steps.map((s, i) => (
+        <div key={s.n} className="flex items-center flex-1 last:flex-none">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors
+              ${step > s.n ? 'bg-brand-green text-white'
+                : step === s.n ? 'bg-brand-orange text-white shadow-orange'
+                : 'bg-surface-muted text-ink-muted border border-surface-border'}`}>
+              {step > s.n ? <CheckCircle size={15} /> : s.n}
+            </div>
+            <span className={`text-[11px] font-medium ${step >= s.n ? 'text-ink-primary' : 'text-ink-muted'}`}>{s.label}</span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full transition-colors ${step > s.n ? 'bg-brand-green' : 'bg-surface-border'}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ── Main KYC Page ────────────────────────────────────────────────
@@ -393,17 +422,36 @@ export default function KycPage() {
       />
 
       <div className="main-with-sidebar">
-        <main className="max-w-2xl mx-auto px-5 py-10 pt-20 md:pt-10">
-        {/* Titre */}
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 bg-surface-muted border border-surface-border rounded-full px-4 py-1.5 text-sm text-ink-secondary font-semibold mb-4">
-            <Shield size={14} className="text-brand-orange" />Vérification d'identité (optionnel)
+        <main className="max-w-2xl mx-auto px-5 py-8 pt-20 md:pt-8 pb-24 md:pb-8">
+
+        {/* Back link */}
+        <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink-primary text-sm mb-6 transition-colors">
+          <ArrowLeft size={15} /> Retour au tableau de bord
+        </Link>
+
+        {/* Hero */}
+        <div className="card p-6 sm:p-7 mb-6 flex items-start gap-4">
+          <div className="w-14 h-14 bg-brand-orange-light rounded-2xl flex items-center justify-center flex-shrink-0">
+            <Shield size={26} className="text-brand-orange" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Vérifiez votre identité</h1>
-          <p className="text-ink-secondary">
-            La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire.
-          </p>
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 bg-surface-muted border border-surface-border rounded-full px-3 py-1 text-xs text-ink-secondary font-semibold mb-2">
+              Vérification d'identité · Optionnel
+            </div>
+            <h1 className="text-2xl font-bold mb-1.5">Vérifiez votre identité</h1>
+            <p className="text-ink-secondary text-sm leading-relaxed">
+              La vérification d'identité n'est pas obligatoire pour utiliser votre carte, mais elle peut débloquer des limites plus élevées et un support prioritaire.
+            </p>
+          </div>
         </div>
+
+        {/* Steps */}
+        <KycStepper step={
+          kyc?.status === 'approved' ? 3
+          : (submitDone || kyc?.status === 'pending' || kyc?.status === 'in_review') ? 3
+          : mode !== 'choose' ? 2
+          : 1
+        } />
 
         {/* Status banner */}
         {kyc && kyc.status && <div className="mb-8"><StatusBanner kyc={kyc} /></div>}
