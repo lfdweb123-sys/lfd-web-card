@@ -4,13 +4,17 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getMastercard, withdrawMastercard } from '@/lib/pagocards';
 import { getCard4xx, withdrawCard4xx } from '@/lib/pagocards-4xxbins';
 import { sendPushToUser } from '@/lib/push';
+import { FEEXPAY_NETWORKS, isAutoPayoutEligible, payoutAndAwaitResult, type FeexPayNetwork } from '@/lib/feexpay';
 import { z } from 'zod';
 
 const XOF_RATE = 600; // taux interne fixe USD -> XOF, cohérent avec le rechargement
+const FEEXPAY_NETWORK_IDS = Object.keys(FEEXPAY_NETWORKS) as FeexPayNetwork[];
 
 const Schema = z.object({
   cardId: z.string().min(1),
   amount: z.number().min(2).max(2000), // USD — Pagocards exige > 1, on prend une marge de sécurité
+  network: z.enum(FEEXPAY_NETWORK_IDS as [FeexPayNetwork, ...FeexPayNetwork[]]).optional(),
+  phoneNumber: z.string().min(8).max(15).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,7 +26,7 @@ export async function POST(req: NextRequest) {
     const parsed = Schema.safeParse(await req.json());
     if (!parsed.success)
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
-    const { cardId, amount } = parsed.data;
+    const { cardId, amount, network, phoneNumber } = parsed.data;
 
     const cardRef = adminDb.collection('cards').doc(cardId);
     const cardDoc = await cardRef.get();
@@ -77,9 +81,9 @@ export async function POST(req: NextRequest) {
       amountUSD: netAmountUSD, // montant net réellement reversable (frais Pagocards déjà déduits)
       requestedAmountUSD: amount,
       withdrawalFeeUSD,
-      amount: amountXOF, // équivalent FCFA approximatif, à titre indicatif pour le virement Mobile Money
+      amount: amountXOF, // équivalent FCFA, montant réellement envoyé/à envoyer par Mobile Money
       currency: 'USD',
-      status: 'pending_payout', // en attente de virement Mobile Money manuel côté admin
+      status: 'pending_payout', // valeur par défaut, ajustée juste après selon le résultat du payout auto
       pagocardsTransactionId,
       createdAt: new Date().toISOString(),
     });
@@ -95,17 +99,64 @@ export async function POST(req: NextRequest) {
       await cardRef.update({ balance: Math.max(0, liveBalance - amount) });
     }
 
-    const title = 'Retrait initié 💸';
-    const message = withdrawalFeeUSD > 0
-      ? `Retrait de $${amount} (dont $${withdrawalFeeUSD} de frais) en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`
-      : `Retrait de $${amount} en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`;
+    // ── Tentative de virement automatique (FeexPay) ──────────────────────────────
+    // Si aucun réseau n'est fourni, si le réseau exige un OTP (impossible à automatiser
+    // sans intervention du bénéficiaire), ou si le montant est sous le minimum du réseau,
+    // on saute directement en file manuelle — comportement identique à avant.
+    // VerzaPay (second prestataire prévu par le client) n'est pas encore intégré : faute de
+    // documentation, aucun appel n'est fait à sa place plutôt que d'inventer une intégration
+    // non vérifiée qui manipulerait de l'argent réel.
+    let autoResult: 'sent' | 'failed_fallback' | 'pending_fallback' | 'error_fallback' | 'skipped' = 'skipped';
+    let feexpayReference: string | undefined;
+    let feexpayNote: string | undefined;
+
+    const networkCfg = network ? FEEXPAY_NETWORKS[network] : undefined;
+    const eligible = network && phoneNumber && networkCfg && isAutoPayoutEligible(network) && amountXOF >= networkCfg.minAmountXOF;
+
+    if (eligible) {
+      try {
+        const result = await payoutAndAwaitResult({
+          network, phoneNumber: phoneNumber!, amount: amountXOF,
+          motif: 'LFD WEB CARD', callback_info: txRef.id,
+        });
+        feexpayReference = result.payout.reference;
+        if (result.resolved && result.success) {
+          autoResult = 'sent';
+        } else if (result.resolved && !result.success) {
+          autoResult = 'failed_fallback';
+          feexpayNote = result.finalStatus?.reason || result.finalStatus?.responsemsg;
+        } else {
+          autoResult = 'pending_fallback'; // toujours PENDING après les tentatives de vérification
+        }
+      } catch (err) {
+        autoResult = 'error_fallback'; // ex. solde FeexPay insuffisant, erreur réseau, etc.
+        feexpayNote = err instanceof Error ? err.message : 'Erreur FeexPay';
+      }
+    }
+
+    const finalStatus = autoResult === 'sent' ? 'completed' : 'pending_payout';
+    await txRef.update({
+      status: finalStatus,
+      payoutProvider: autoResult === 'skipped' ? null : 'feexpay',
+      payoutAutoResult: autoResult,
+      ...(feexpayReference ? { feexpayReference } : {}),
+      ...(feexpayNote ? { feexpayNote } : {}),
+      ...(finalStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}),
+    });
+
+    const title = finalStatus === 'completed' ? 'Retrait reçu ✅' : 'Retrait initié 💸';
+    const message = finalStatus === 'completed'
+      ? `${amountXOF.toLocaleString()} FCFA ont été envoyés automatiquement sur votre Mobile Money.`
+      : withdrawalFeeUSD > 0
+        ? `Retrait de $${amount} (dont $${withdrawalFeeUSD} de frais) en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`
+        : `Retrait de $${amount} en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`;
     await adminDb.collection('notifications').add({
       userId: user.uid, cardId, type: 'withdrawal_initiated',
       title, message, read: false, createdAt: new Date().toISOString(),
     });
     await sendPushToUser(user.uid, { title, body: message, data: { url: '/dashboard' } });
 
-    return NextResponse.json({ success: true, data: { transactionId: txRef.id, amountXOF } });
+    return NextResponse.json({ success: true, data: { transactionId: txRef.id, amountXOF, auto: finalStatus === 'completed' } });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erreur';
     if (msg === 'UNAUTHORIZED') return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });

@@ -493,7 +493,10 @@ export default function AdminPage() {
   const [txStatus, setTxStatus] = useState('all');
 
   // Onglet Retraits
-  const [withdrawals, setWithdrawals] = useState<{ id: string; userId: string; cardId: string; amountUSD: number; amount: number; createdAt: string; status: string }[]>([]);
+  const [withdrawals, setWithdrawals] = useState<{
+    id: string; userId: string; cardId: string; amountUSD: number; amount: number; createdAt: string; status: string;
+    payoutProvider?: string | null; payoutAutoResult?: string; feexpayNote?: string;
+  }[]>([]);
   const [wdPage, setWdPage] = useState(1);
   const [wdHasMore, setWdHasMore] = useState(false);
   const [wdLoading, setWdLoading] = useState(false);
@@ -647,6 +650,26 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) { setMsg('Retrait marqué comme payé ✅'); await fetchWithdrawals(); setTimeout(() => setMsg(''), 3000); }
       else setError(data.error || 'Erreur');
+    } finally {
+      setWdActionId(null);
+    }
+  };
+
+  const checkFeexpayStatus = async (transactionId: string) => {
+    setWdActionId(transactionId);
+    try {
+      const token = await firebaseUser!.getIdToken(true);
+      const res = await fetch('/api/admin/withdrawals/check-feexpay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ transactionId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMsg(data.data.status === 'SUCCESSFUL' ? 'Confirmé reçu par FeexPay ✅' : `Statut FeexPay : ${data.data.status}`);
+        await fetchWithdrawals();
+        setTimeout(() => setMsg(''), 3000);
+      } else setError(data.error || 'Erreur');
     } finally {
       setWdActionId(null);
     }
@@ -1050,20 +1073,27 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted">
                   <tr className="text-ink-secondary text-left">
-                    {['Utilisateur', 'Montant', 'Date', 'Référence', 'Action'].map(h =>
+                    {['Utilisateur', 'Montant', 'Date', 'Statut auto', 'Référence', 'Action'].map(h =>
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {wdLoading ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted"><Loader2 size={20} className="animate-spin mx-auto" /></td></tr>
                   ) : withdrawals.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-muted">Aucun retrait {wdStatusFilter === 'pending_payout' ? 'en attente' : 'payé'}</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-muted">Aucun retrait {wdStatusFilter === 'pending_payout' ? 'en attente' : 'payé'}</td></tr>
                   ) : withdrawals.map(w => (
                     <tr key={w.id} className="border-t border-surface-border hover:bg-surface-muted/50">
                       <td className="px-4 py-3 font-mono text-xs text-ink-muted">{w.userId.slice(0, 12)}…</td>
                       <td className="px-4 py-3 font-medium">${w.amountUSD} <span className="text-ink-muted font-normal">(~{w.amount?.toLocaleString()} FCFA)</span></td>
                       <td className="px-4 py-3 text-ink-muted">{formatDateTime(w.createdAt)}</td>
+                      <td className="px-4 py-3">
+                        {w.payoutAutoResult === 'sent' ? <span className="badge-green">FeexPay ✓</span>
+                          : w.payoutAutoResult === 'pending_fallback' ? <span className="badge-orange">FeexPay en cours…</span>
+                          : w.payoutAutoResult === 'failed_fallback' ? <span title={w.feexpayNote} className="badge-red">FeexPay échoué</span>
+                          : w.payoutAutoResult === 'error_fallback' ? <span title={w.feexpayNote} className="badge-red">Erreur FeexPay</span>
+                          : <span className="text-ink-muted text-xs">Manuel</span>}
+                      </td>
                       <td className="px-4 py-3">
                         {w.status === 'pending_payout' ? (
                           <input
@@ -1077,10 +1107,17 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         {w.status === 'pending_payout' ? (
-                          <button onClick={() => markWithdrawalPaid(w.id)} disabled={wdActionId === w.id}
-                            className="inline-flex items-center gap-1.5 text-brand-green text-xs font-medium hover:underline disabled:opacity-50">
-                            <Send size={13} />{wdActionId === w.id ? 'Envoi...' : 'Marquer payé'}
-                          </button>
+                          w.payoutAutoResult === 'pending_fallback' ? (
+                            <button onClick={() => checkFeexpayStatus(w.id)} disabled={wdActionId === w.id}
+                              className="inline-flex items-center gap-1.5 text-brand-orange text-xs font-medium hover:underline disabled:opacity-50">
+                              <RefreshCw size={13} className={wdActionId === w.id ? 'animate-spin' : ''} />{wdActionId === w.id ? 'Vérification...' : 'Vérifier FeexPay'}
+                            </button>
+                          ) : (
+                            <button onClick={() => markWithdrawalPaid(w.id)} disabled={wdActionId === w.id}
+                              className="inline-flex items-center gap-1.5 text-brand-green text-xs font-medium hover:underline disabled:opacity-50">
+                              <Send size={13} />{wdActionId === w.id ? 'Envoi...' : 'Marquer payé'}
+                            </button>
+                          )
                         ) : <span className="badge-green">Payé</span>}
                       </td>
                     </tr>

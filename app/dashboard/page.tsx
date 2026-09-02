@@ -754,12 +754,38 @@ function ReloadModal({ card, onClose, country, getToken }: {
 }
 
 // ── Withdraw modal (Mastercard uniquement) ────────────────────────
-function WithdrawModal({ card, onClose, getToken, onSuccess }: {
-  card: VirtualCard; onClose: () => void; getToken: () => Promise<string>; onSuccess: (msg: string) => void;
+// Réseaux éligibles à un retrait 100% automatique (les réseaux nécessitant un code OTP —
+// Orange/Wave Burkina Faso — ne sont pas proposés ici : ils exigent que le bénéficiaire
+// génère lui-même le code juste avant l'appel, incompatible avec un virement automatique).
+const WITHDRAW_NETWORKS: { id: string; label: string; country: string }[] = [
+  { id: 'mtn_bj', label: 'MTN Mobile Money', country: 'BJ' },
+  { id: 'moov_bj', label: 'Moov Money', country: 'BJ' },
+  { id: 'celtiis_bj', label: 'Celtiis', country: 'BJ' },
+  { id: 'mtn_ci', label: 'MTN Money', country: 'CI' },
+  { id: 'orange_ci', label: 'Orange Money', country: 'CI' },
+  { id: 'moov_ci', label: 'Moov Money', country: 'CI' },
+  { id: 'wave_ci', label: 'Wave', country: 'CI' },
+  { id: 'togocom_tg', label: 'Togocom', country: 'TG' },
+  { id: 'moov_tg', label: 'Moov', country: 'TG' },
+  { id: 'orange_sn', label: 'Orange Money', country: 'SN' },
+  { id: 'free_sn', label: 'Free Money', country: 'SN' },
+  { id: 'wave_sn', label: 'Wave', country: 'SN' },
+  { id: 'mtn_cg', label: 'MTN', country: 'CG' },
+  { id: 'moov_bf', label: 'Moov', country: 'BF' },
+  { id: 'orange_ml', label: 'Orange', country: 'ML' },
+  { id: 'mobicash_ml', label: 'Mobicash', country: 'ML' },
+];
+
+function WithdrawModal({ card, country, defaultPhone, onClose, getToken, onSuccess }: {
+  card: VirtualCard; country: string; defaultPhone?: string;
+  onClose: () => void; getToken: () => Promise<string>; onSuccess: (msg: string) => void;
 }) {
   const [amount, setAmount] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const availableNetworks = WITHDRAW_NETWORKS.filter(n => n.country === country.toUpperCase());
+  const [network, setNetwork] = useState(availableNetworks[0]?.id || '');
+  const [phoneNumber, setPhoneNumber] = useState(defaultPhone || '');
 
   // Frais de $1 documentés par Pagocards uniquement sur l'EURO-MASTER classique —
   // la nouvelle gamme 4XXBINs (Visa 493BIN) n'a aucun frais de retrait.
@@ -778,11 +804,16 @@ function WithdrawModal({ card, onClose, getToken, onSuccess }: {
       const res = await fetch('/api/cards/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cardId: card.id, amount }),
+        body: JSON.stringify({
+          cardId: card.id, amount,
+          ...(network && phoneNumber ? { network, phoneNumber: phoneNumber.replace(/\D/g, '') } : {}),
+        }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
-      onSuccess(`Retrait initié — vous recevrez environ ${data.data.amountXOF.toLocaleString()} FCFA par Mobile Money sous 24-48h.`);
+      onSuccess(data.data.auto
+        ? `${xof.toLocaleString()} FCFA envoyés automatiquement sur votre Mobile Money.`
+        : `Retrait initié — vous recevrez environ ${data.data.amountXOF.toLocaleString()} FCFA par Mobile Money sous 24-48h.`);
       onClose();
     } catch { setError('Erreur réseau.'); setLoading(false); }
   };
@@ -800,7 +831,7 @@ function WithdrawModal({ card, onClose, getToken, onSuccess }: {
 
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-5 flex items-start gap-2 text-sm text-blue-700">
           <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-          <span>Le montant est prélevé sur votre carte immédiatement. Le virement Mobile Money est traité manuellement sous 24 à 48h.</span>
+          <span>Le montant est prélevé sur votre carte immédiatement. Si l'envoi automatique n'aboutit pas, le virement est traité manuellement sous 24 à 48h.</span>
         </div>
 
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
@@ -816,6 +847,23 @@ function WithdrawModal({ card, onClose, getToken, onSuccess }: {
 
         {withdrawFee > 0 && (
           <p className="text-ink-muted text-xs mb-5">Des frais de ${withdrawFee} sont appliqués par l'émetteur sur les retraits Mastercard.</p>
+        )}
+
+        {availableNetworks.length > 0 && (
+          <div className="mb-5 space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">Opérateur Mobile Money</label>
+              <select value={network} onChange={e => setNetwork(e.target.value)} className="input-field text-sm">
+                {availableNetworks.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Numéro Mobile Money</label>
+              <input type="tel" placeholder="Ex. 2290166000000" value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value)} className="input-field text-sm" />
+              <div className="text-ink-muted text-xs mt-1">Renseigné, un envoi automatique et instantané sera tenté avant de repasser en traitement manuel.</div>
+            </div>
+          </div>
         )}
 
         <button onClick={handle} disabled={loading || amount < 2 || amount > maxAmount} className="btn-primary w-full py-3.5">
@@ -1494,6 +1542,8 @@ function DashboardContent() {
       {showWithdraw && selectedCard && (
         <WithdrawModal
           card={selectedCard}
+          country={appUser?.country || 'BJ'}
+          defaultPhone={appUser?.phone}
           onClose={() => setShowWithdraw(false)}
           getToken={getToken}
           onSuccess={(msg) => { setToast({ message: msg, type: 'success' }); fetchData(); }}
