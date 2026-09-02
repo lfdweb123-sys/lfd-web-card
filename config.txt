@@ -1,0 +1,11 @@
+Service	URL à renseigner dans leur dashboard	Événements
+
+Passerelle de paiement (LFD Gateway)	https://card.lfdweb.com/api/payment/webhook*	payment.completed, payment.failed
+
+Pagocards	https://card.lfdweb.com/api/webhook/pagocards	3DS, activation wallet
+
+FeexPay	(non applicable — FeexPay V2 ne pousse pas de webhook, on interroge son endpoint de statut nous-mêmes)	—
+
+VerzaPay	https://card.lfdweb.com/api/webhook/verzapay	payout.completed, payout.failed uniquement (ne pas cocher payment.*, on n'encaisse jamais via VerzaPay)
+
+Didit (KYC)	https://card.lfdweb.com/api/webhook/didit	déjà configuré, inchangé
