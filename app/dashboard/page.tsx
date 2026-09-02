@@ -400,20 +400,26 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
   const [brand, setBrand] = useState<'visa' | 'mastercard'>('visa');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [withLoad, setWithLoad] = useState(false);
+  const RELOAD_MIN = 30000;
+  const [loadAmount, setLoadAmount] = useState(RELOAD_MIN);
 
   const CARD_PRICE = 5000; // doit rester synchronisé avec CARD_CREATION_PRICE côté serveur
   const FEE_RATE = 0.05;
-  const fee = Math.round(CARD_PRICE * FEE_RATE);
-  const total = CARD_PRICE + fee;
+  const cardFee = Math.round(CARD_PRICE * FEE_RATE);
+  const loadFee = withLoad ? Math.round(loadAmount * FEE_RATE) : 0;
+  const fee = cardFee + loadFee;
+  const total = CARD_PRICE + (withLoad ? loadAmount : 0) + fee;
 
   const handle = async () => {
+    if (withLoad && loadAmount < RELOAD_MIN) { setError(`Montant de rechargement minimum : ${RELOAD_MIN.toLocaleString()} FCFA`); return; }
     setLoading(true); setError('');
     try {
       const token = await getToken();
       const res = await fetch('/api/cards/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ country: country.toLowerCase(), brand }),
+        body: JSON.stringify({ country: country.toLowerCase(), brand, ...(withLoad ? { initialLoad: loadAmount } : {}) }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); setLoading(false); return; }
@@ -468,10 +474,39 @@ function BuyModal({ onClose, country, getToken, hasCards }: {
           </div>
         </div>
 
+        <div className="mb-5">
+          <label className="flex items-center gap-3 p-4 rounded-2xl border-2 border-surface-border bg-surface-muted cursor-pointer">
+            <input type="checkbox" checked={withLoad} onChange={(e) => setWithLoad(e.target.checked)} className="w-4 h-4 accent-brand-orange" />
+            <div className="flex-1">
+              <div className="text-sm font-medium">Recharger ma carte tout de suite</div>
+              <div className="text-xs text-ink-muted">Optionnel — évite un second paiement plus tard</div>
+            </div>
+          </label>
+          {withLoad && (
+            <div className="mt-3">
+              <input type="number" min={RELOAD_MIN} step={5000} value={loadAmount}
+                onChange={(e) => setLoadAmount(Number(e.target.value))}
+                className="input-field w-full" />
+              <div className="text-ink-muted text-xs mt-1">≈ ${(loadAmount / 600).toFixed(2)} USD crédités sur la carte · Minimum {RELOAD_MIN.toLocaleString()} FCFA</div>
+              <div className="flex gap-2 mt-2">
+                {[30000, 50000, 75000, 100000].map(a => (
+                  <button key={a} onClick={() => setLoadAmount(a)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all ${loadAmount === a ? 'border-brand-orange bg-brand-orange-light text-brand-orange' : 'border-surface-border text-ink-secondary'}`}>
+                    {(a / 1000)}k
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {error && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm mb-4">{error}</div>}
 
         <div className="bg-surface-muted rounded-2xl p-4 mb-5 text-sm">
           <div className="flex justify-between mb-2"><span className="text-ink-secondary">Carte {brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle</span><span className="font-medium">{CARD_PRICE.toLocaleString()} FCFA</span></div>
+          {withLoad && (
+            <div className="flex justify-between mb-2"><span className="text-ink-secondary">Rechargement</span><span className="font-medium">{loadAmount.toLocaleString()} FCFA</span></div>
+          )}
           <div className="flex justify-between mb-2"><span className="text-ink-secondary">Frais Mobile Money (5%)</span><span className="font-medium">{fee.toLocaleString()} FCFA</span></div>
           <div className="border-t border-surface-border pt-2 flex justify-between font-bold"><span>Total</span><span className="text-brand-orange">{total.toLocaleString()} FCFA</span></div>
         </div>

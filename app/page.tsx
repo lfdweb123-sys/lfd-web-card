@@ -1042,6 +1042,11 @@ function Footer() {
                   FAQ
                 </a>
               </li>
+              <li>
+                <Link href="/status" className="hover:text-ink-primary transition-colors">
+                  Statut du service
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

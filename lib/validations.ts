@@ -12,6 +12,7 @@ export const RegisterSchema = z.object({
 export const BuyCardSchema = z.object({
   country: z.string().min(2).max(3),
   brand: z.enum(['mastercard', 'visa']).default('visa'),
+  initialLoad: z.number().min(30000).max(500000).optional(),
 });
 
 export const ReloadCardSchema = z.object({

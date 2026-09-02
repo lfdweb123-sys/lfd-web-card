@@ -23,6 +23,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pays requis.' }, { status: 400 });
     }
 
+    // Rechargement optionnel dès l'achat (même seuils que /api/cards/reload : 30 000 - 500 000 FCFA)
+    let initialLoad: number | undefined;
+    if (body.initialLoad !== undefined && body.initialLoad !== null) {
+      const raw = Number(body.initialLoad);
+      if (!Number.isFinite(raw) || raw < 30000 || raw > 500000) {
+        return NextResponse.json({ success: false, error: 'Montant de rechargement invalide (30 000 - 500 000 FCFA).' }, { status: 400 });
+      }
+      initialLoad = raw;
+    }
+
     // On autorise plusieurs cartes actives par utilisateur (fonctionnalité prévue côté UI).
     // On bloque uniquement les doubles-clics : une transaction d'achat encore "pending"
     // datant de moins de 10 minutes.
@@ -42,20 +52,25 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ Séparation prix de la carte / frais mobile money (5%)
-    const fee = Math.round(CARD_PRICE * PURCHASE_FEE_RATE);
-    const total = CARD_PRICE + fee; // montant réel facturé au client via mobile money
+    // Le rechargement initial optionnel suit la même règle de frais que le prix de la carte :
+    // 5% mobile money, jamais envoyés à Pagocards (tx.amount reste le montant carte pur).
+    const cardFee = Math.round(CARD_PRICE * PURCHASE_FEE_RATE);
+    const loadFee = initialLoad ? Math.round(initialLoad * PURCHASE_FEE_RATE) : 0;
+    const fee = cardFee + loadFee;
+    const total = CARD_PRICE + (initialLoad || 0) + fee; // montant réel facturé au client via mobile money
 
     const txRef = await adminDb.collection('transactions').add({
       userId: user.uid, type: 'card_purchase', amount: CARD_PRICE,
       fee, total,
+      ...(initialLoad ? { initialLoad, cardFee, loadFee } : {}),
       currency: 'XOF', status: 'pending', brand,
       createdAt: new Date().toISOString(),
     });
 
-    // La passerelle encaisse le total (prix carte + frais mobile money 5%)
+    // La passerelle encaisse le total (prix carte + rechargement optionnel + frais mobile money 5%)
     const { url, pid } = await generatePaymentLink({
       amount: total,
-      description: `Achat carte ${brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle LFD WEB CARD`,
+      description: `Achat carte ${brand === 'visa' ? 'Visa' : 'Mastercard'} virtuelle LFD WEB CARD${initialLoad ? ' + rechargement' : ''}`,
       transactionId: txRef.id,
       userId: user.uid,
       country,

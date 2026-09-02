@@ -159,18 +159,42 @@ async function handlePurchase(
   });
 
   // Frais mobile money de 5% sur l'achat de carte → revenu plateforme
-  if (tx.fee) {
+  const cardFee = (tx.cardFee as number | undefined) ?? tx.fee;
+  if (cardFee) {
     await adminDb.collection('platform_revenue').add({
       type: 'purchase_fee',
       userId: tx.userId,
       cardId: cardRef.id,
       amountXOF: tx.amount,
       totalXOF: tx.total,
-      feeXOF: tx.fee,
+      feeXOF: cardFee,
       rate: 0.05,
       brand,
       createdAt: new Date().toISOString(),
     });
+  }
+
+  // Rechargement optionnel demandé au moment de l'achat — on envoie UNIQUEMENT le
+  // montant carte à Pagocards, jamais les frais (même logique que /api/cards/reload).
+  if (tx.initialLoad) {
+    try {
+      const loadAmountUSD = parseFloat(((tx.initialLoad as number) / 600).toFixed(2));
+      const fundRes = await fundCard({ brand, cardid: pagoRes.cardid, email: user.email as string, amount: loadAmountUSD });
+      if (fundRes.success) {
+        await cardRef.update({ balance: fundRes.balance ?? loadAmountUSD });
+
+        const loadFeeXOF = (tx.loadFee as number | undefined) ?? 0;
+        await adminDb.collection('platform_revenue').add({
+          type: 'reload_fee',
+          userId: tx.userId,
+          cardId: cardRef.id,
+          amountXOF: tx.initialLoad,
+          feeXOF: loadFeeXOF,
+          rate: 0.05,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch { /* la carte reste créée même si le rechargement initial échoue — rechargeable ensuite depuis le dashboard */ }
   }
 
   await adminDb.collection('notifications').add({
