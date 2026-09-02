@@ -640,7 +640,12 @@ function WithdrawModal({ card, onClose, getToken, onSuccess }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const xof = Math.round(amount * 600);
+  // Frais de $1 documentés par Pagocards uniquement sur l'EURO-MASTER classique —
+  // la nouvelle gamme 4XXBINs (Visa 493BIN) n'a aucun frais de retrait.
+  const isClassicMastercard = card.apiFamily !== '4xxbins' && card.brand === 'mastercard';
+  const withdrawFee = isClassicMastercard ? 1 : 0;
+  const netAmount = Math.max(0, amount - withdrawFee);
+  const xof = Math.round(netAmount * 600);
   const maxAmount = card.balance || 0;
 
   const handle = async () => {
@@ -684,11 +689,13 @@ function WithdrawModal({ card, onClose, getToken, onSuccess }: {
           <input type="number" min={2} step={1} value={amount}
             onChange={e => setAmount(Number(e.target.value))} className="input-field text-xl font-bold" />
           <div className="text-ink-muted text-xs mt-1">
-            ≈ {xof.toLocaleString()} FCFA · Solde disponible : ${maxAmount.toFixed(2)}
+            ≈ {xof.toLocaleString()} FCFA{withdrawFee > 0 ? ` (net après $${withdrawFee} de frais)` : ''} · Solde disponible : ${maxAmount.toFixed(2)}
           </div>
         </div>
 
-        <p className="text-ink-muted text-xs mb-5">Des frais de $1 sont appliqués par l'émetteur de la carte sur chaque retrait.</p>
+        {withdrawFee > 0 && (
+          <p className="text-ink-muted text-xs mb-5">Des frais de ${withdrawFee} sont appliqués par l'émetteur sur les retraits Mastercard.</p>
+        )}
 
         <button onClick={handle} disabled={loading || amount < 2 || amount > maxAmount} className="btn-primary w-full py-3.5">
           {loading ? 'Traitement...' : `Retirer $${amount} →`}

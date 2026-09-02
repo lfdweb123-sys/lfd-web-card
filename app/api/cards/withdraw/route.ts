@@ -51,16 +51,32 @@ export async function POST(req: NextRequest) {
     if (liveBalance < amount)
       return NextResponse.json({ success: false, error: 'Solde insuffisant sur la carte.' }, { status: 400 });
 
-    const pagocardsTransactionId = is4xxbins
-      ? (await withdrawCard4xx(card.pagocardsCardId, amount)).data.transaction_id
-      : (await withdrawMastercard({ cardid: card.pagocardsCardId, email: card.email, amount })).transactionId;
+    // Montant net réellement crédité au wallet Pagocards, celui qu'on peut effectivement
+    // reverser au client par Mobile Money :
+    //   - EURO-MASTER : la doc facture $1 de frais sur le retrait, déjà déduit dans
+    //     usdc_amount (ex. amount=10 -> usdc_amount=9). On ne peut pas reverser plus que ça.
+    //   - 4XXBINs (400/493BIN) : aucun frais de retrait documenté, display_amount == amount.
+    let netAmountUSD: string | number;
+    let pagocardsTransactionId: string;
+    if (is4xxbins) {
+      const res = await withdrawCard4xx(card.pagocardsCardId, amount);
+      netAmountUSD = res.data.display_amount ?? amount;
+      pagocardsTransactionId = res.data.transaction_id;
+    } else {
+      const res = await withdrawMastercard({ cardid: card.pagocardsCardId, email: card.email, amount });
+      netAmountUSD = res.usdc_amount ?? amount;
+      pagocardsTransactionId = res.transactionId;
+    }
 
-    const amountXOF = Math.round(amount * XOF_RATE);
+    const amountXOF = Math.round(Number(netAmountUSD) * XOF_RATE);
+    const withdrawalFeeUSD = parseFloat((amount - Number(netAmountUSD)).toFixed(2));
     const txRef = await adminDb.collection('transactions').add({
       userId: user.uid,
       cardId,
       type: 'card_withdrawal',
-      amountUSD: amount,
+      amountUSD: netAmountUSD, // montant net réellement reversable (frais Pagocards déjà déduits)
+      requestedAmountUSD: amount,
+      withdrawalFeeUSD,
       amount: amountXOF, // équivalent FCFA approximatif, à titre indicatif pour le virement Mobile Money
       currency: 'USD',
       status: 'pending_payout', // en attente de virement Mobile Money manuel côté admin
@@ -68,10 +84,21 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     });
 
-    await cardRef.update({ balance: Math.max(0, liveBalance - amount) });
+    // La doc ne garantit pas que le montant déduit de la carte corresponde exactement au
+    // montant USD demandé (conversion EUR pour l'EURO-MASTER) — on relit le vrai solde.
+    try {
+      const fresh = is4xxbins
+        ? (await getCard4xx(card.pagocardsCardId)).data.balance?.display_amount
+        : (await getMastercard({ cardid: card.pagocardsCardId, email: card.email })).balance;
+      await cardRef.update({ balance: fresh ?? Math.max(0, liveBalance - amount) });
+    } catch {
+      await cardRef.update({ balance: Math.max(0, liveBalance - amount) });
+    }
 
     const title = 'Retrait initié 💸';
-    const message = `Retrait de $${amount} en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`;
+    const message = withdrawalFeeUSD > 0
+      ? `Retrait de $${amount} (dont $${withdrawalFeeUSD} de frais) en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`
+      : `Retrait de $${amount} en cours de traitement. Vous recevrez l'équivalent (~${amountXOF.toLocaleString()} FCFA) par Mobile Money sous 24 à 48h.`;
     await adminDb.collection('notifications').add({
       userId: user.uid, cardId, type: 'withdrawal_initiated',
       title, message, read: false, createdAt: new Date().toISOString(),

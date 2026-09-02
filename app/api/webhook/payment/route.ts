@@ -8,6 +8,11 @@ import { creditReferralCommission } from '@/lib/referral';
 
 const OK = () => NextResponse.json({ received: true });
 
+// Pagocards tronque les montants à 2 décimales SANS arrondir (doc : "55.175678 is
+// processed as 55.17") — Math.floor plutôt que toFixed(2), qui arrondirait au centime
+// supérieur et pourrait légèrement décaler notre comptabilité interne du solde réel.
+const truncate2 = (n: number) => Math.floor(n * 100) / 100;
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return OK(); }
@@ -124,7 +129,7 @@ async function handlePurchase(
     // Nouvelle gamme 4XXBINs (493BIN/536BIN) : une seule requête renvoie déjà tous les
     // détails de la carte (numéro, solde, devise) — pas besoin d'un second appel getcard.
     const productCode = ((tx.productCode as Product4xx) || (brand === 'mastercard' ? '536_master' : 'us_493_visa_bin'));
-    const initialLoadUSD = tx.initialLoad ? parseFloat(((tx.initialLoad as number) / 600).toFixed(2)) : undefined;
+    const initialLoadUSD = tx.initialLoad ? truncate2((tx.initialLoad as number) / 600) : undefined;
     const res = await createCard4xx({ product_code: productCode, first_name: firstname, last_name: lastname, email: user.email as string, initial_load: initialLoadUSD });
     const d = res.data;
     pagocardsCardId = d.card_id;
@@ -217,7 +222,7 @@ async function handlePurchase(
       });
     } else {
       try {
-        const loadAmountUSD = parseFloat(((tx.initialLoad as number) / 600).toFixed(2));
+        const loadAmountUSD = truncate2((tx.initialLoad as number) / 600);
         const fundRes = await fundCard({ brand, cardid: pagocardsCardId, email: user.email as string, amount: loadAmountUSD });
         if (fundRes.success) {
           // La doc Pagocards ne renvoie jamais le solde dans la réponse de fundcard, et pour
@@ -272,7 +277,7 @@ async function handleReload(
   // tx.amount = montant carte uniquement (sans les frais)
   // tx.fee    = frais plateforme (jamais envoyés à Pagocards)
   // tx.total  = ce que le client a payé (amount + fee)
-  const amountUSD = parseFloat((tx.amount / 600).toFixed(2));
+  const amountUSD = truncate2(tx.amount / 600);
   if (amountUSD < 1) throw new Error('Amount too small');
 
   const brand: CardBrand = (card.brand as CardBrand) || 'visa';
@@ -303,7 +308,7 @@ async function handleReload(
   }
 
   const feeXOF = (tx.fee as number) ?? 0;
-  const feeUSD = parseFloat((feeXOF / 600).toFixed(2));
+  const feeUSD = truncate2(feeXOF / 600);
 
   await txDoc.ref.update({
     status: 'success',
