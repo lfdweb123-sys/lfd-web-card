@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { checkGiftcardSkuAvailability, getGiftcardBySku } from '@/lib/pagocards';
 import { generatePaymentLink } from '@/lib/payment-gateway';
 import { BuyGiftcardSchema } from '@/lib/validations';
+import { getGiftcardPriceRange } from '@/lib/giftcard-utils';
 
 const XOF_RATE = 600; // taux interne fixe USD -> XOF, cohérent avec le reste de la plateforme
 const FEE_RATE = 0.05; // même frais mobile money que sur les cartes
@@ -26,6 +27,19 @@ export async function POST(req: NextRequest) {
     const giftcard = await getGiftcardBySku(sku);
     if (giftcard.currency && giftcard.currency.toUpperCase() !== 'USD')
       return NextResponse.json({ success: false, error: 'Cette carte cadeau est libellée dans une devise non prise en charge pour le moment.' }, { status: 400 });
+
+    // Chaque SKU a sa propre plage de prix (ex. 5-500 pour un montant libre, ou min=max pour
+    // une dénomination fixe) — on la revérifie ici plutôt que de ne faire confiance qu'au
+    // formulaire client.
+    const { min, max } = getGiftcardPriceRange(giftcard);
+    if (amountUSD < min || amountUSD > max) {
+      return NextResponse.json({
+        success: false,
+        error: min === max
+          ? `Cette carte cadeau est disponible uniquement au montant fixe de $${min}.`
+          : `Montant invalide : cette carte cadeau accepte entre $${min} et $${max}.`,
+      }, { status: 400 });
+    }
 
     // Vérifie en direct auprès de Pagocards que cette combinaison sku/quantité/prix est disponible
     // avant d'encaisser le client (catalogue et prix peuvent changer côté fournisseur).

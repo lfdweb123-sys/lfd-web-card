@@ -9,19 +9,13 @@ import { Pagination } from '@/components/Pagination';
 import { Logo as LogoComponent } from '@/components/Logo';
 import { SidebarLogo } from '@/components/SidebarLogo';
 import type { GiftcardOrder } from '@/types';
+import { getGiftcardPriceRange, getGiftcardImage, getGiftcardRegion, type GiftcardLike } from '@/lib/giftcard-utils';
 import {
   Gift, Search, X, Menu, Home, CreditCard, TrendingUp, Bell,
   User, LogOut, Loader2, ExternalLink, Copy, Check, ShoppingBag,
 } from 'lucide-react';
 
-interface Giftcard {
-  sku: string;
-  title: string;
-  currency: string;
-  region?: string;
-  country?: string;
-  [key: string]: unknown;
-}
+type Giftcard = GiftcardLike;
 
 const XOF_RATE = 600;
 const FEE_RATE = 0.05;
@@ -137,13 +131,40 @@ function MobileDrawer({ open, onClose, onLogout, userName }: {
   );
 }
 
+// ── Catalog tile ──────────────────────────────────────────────────
+function GiftcardTile({ card, onClick }: { card: Giftcard; onClick: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  const image = getGiftcardImage(card);
+  const { min, max } = getGiftcardPriceRange(card);
+  const priceLabel = min === max ? `$${min}` : `$${min} – $${max}`;
+
+  return (
+    <button onClick={onClick}
+      className="p-4 rounded-2xl border-2 border-surface-border bg-white hover:border-brand-orange/50 text-left transition-all">
+      {image && !imgError ? (
+        <img src={image} alt={card.title} onError={() => setImgError(true)}
+          className="w-9 h-9 rounded-xl object-cover mb-3 bg-surface-muted" />
+      ) : (
+        <div className="w-9 h-9 bg-brand-orange-light rounded-xl flex items-center justify-center mb-3">
+          <Gift size={16} className="text-brand-orange" />
+        </div>
+      )}
+      <div className="font-semibold text-sm truncate">{card.title}</div>
+      <div className="text-xs text-ink-muted mt-0.5">{priceLabel} {card.currency}</div>
+      {getGiftcardRegion(card) && <div className="text-xs text-ink-muted">{getGiftcardRegion(card)}</div>}
+    </button>
+  );
+}
+
 // ── Buy modal ─────────────────────────────────────────────────────
 function BuyModal({ card, country, getToken, onClose, onSuccess, onError }: {
   card: Giftcard; country: string; getToken: () => Promise<string>;
   onClose: () => void; onSuccess: () => void; onError: (msg: string) => void;
 }) {
+  const { min, max } = getGiftcardPriceRange(card);
+  const isFixedPrice = min === max;
   const [quantity, setQuantity] = useState(1);
-  const [amountUSD, setAmountUSD] = useState(25);
+  const [amountUSD, setAmountUSD] = useState(min);
   const [loading, setLoading] = useState(false);
 
   const totalUSD = parseFloat((amountUSD * quantity).toFixed(2));
@@ -174,16 +195,23 @@ function BuyModal({ card, country, getToken, onClose, onSuccess, onError }: {
         <div className="flex justify-between items-start mb-5">
           <div>
             <h3 className="font-bold text-xl">{card.title}</h3>
-            <p className="text-ink-secondary text-sm">{card.currency}{card.region ? ` · ${card.region}` : ''}</p>
+            <p className="text-ink-secondary text-sm">{card.currency}{getGiftcardRegion(card) ? ` · ${getGiftcardRegion(card)}` : ''}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-surface-muted rounded-xl flex items-center justify-center"><X size={15} /></button>
         </div>
 
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">Montant unitaire (USD)</label>
-          <input type="number" min={1} max={500} value={amountUSD}
-            onChange={(e) => setAmountUSD(Math.max(1, Number(e.target.value)))}
-            className="input-field w-full" />
+          {isFixedPrice ? (
+            <div className="input-field w-full bg-surface-muted text-ink-secondary flex items-center">${min} (montant fixe)</div>
+          ) : (
+            <>
+              <input type="number" min={min} max={max} value={amountUSD}
+                onChange={(e) => setAmountUSD(Math.min(max, Math.max(min, Number(e.target.value))))}
+                className="input-field w-full" />
+              <div className="text-ink-muted text-xs mt-1">Entre ${min} et ${max}</div>
+            </>
+          )}
         </div>
 
         <div className="mb-5">
@@ -390,14 +418,7 @@ export default function GiftcardsPage() {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                 {catalog.map((card) => (
-                  <button key={card.sku} onClick={() => setSelectedCard(card)}
-                    className="p-4 rounded-2xl border-2 border-surface-border bg-white hover:border-brand-orange/50 text-left transition-all">
-                    <div className="w-9 h-9 bg-brand-orange-light rounded-xl flex items-center justify-center mb-3">
-                      <Gift size={16} className="text-brand-orange" />
-                    </div>
-                    <div className="font-semibold text-sm truncate">{card.title}</div>
-                    <div className="text-xs text-ink-muted mt-0.5">{card.currency}{card.region ? ` · ${card.region}` : ''}</div>
-                  </button>
+                  <GiftcardTile key={card.sku} card={card} onClick={() => setSelectedCard(card)} />
                 ))}
               </div>
               <Pagination page={catalogPage} hasMore={catalogHasMore} onChange={handlePageChange} loading={catalogLoading} />

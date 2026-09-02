@@ -144,6 +144,13 @@ export interface PagoGiftcard {
   currency: string;
   region?: string;
   country?: string;
+  // Champs confirmés visuellement sur l'interface "Buy Giftcards" de Pagocards (colonnes
+  // IMAGE/MIN PRICE/MAX PRICE/REGIONS) — nom exact non documenté en JSON, voir
+  // lib/giftcard-utils.ts qui lit plusieurs variantes de casse par sécurité.
+  minPrice?: number;
+  maxPrice?: number;
+  image?: string;
+  regions?: string | string[];
   [key: string]: unknown;
 }
 
